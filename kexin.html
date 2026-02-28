@@ -43,10 +43,7 @@
     align-items: center;
     margin-bottom: 20px;
   }
-  .header h1 {
-    font-size: 20px;
-    font-weight: 700;
-  }
+  .header h1 { font-size: 20px; font-weight: 700; }
   .header .badge {
     font-size: 12px;
     padding: 4px 10px;
@@ -93,24 +90,15 @@
   .date-btn.active .day-name { color: var(--text-mid); }
 
   /* Progress Bar */
-  .progress-section {
-    margin-bottom: 24px;
-  }
+  .progress-section { margin-bottom: 24px; }
   .progress-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 8px;
   }
-  .progress-label {
-    font-size: 13px;
-    color: var(--text-dim);
-  }
-  .progress-count {
-    font-size: 13px;
-    color: var(--green);
-    font-weight: 600;
-  }
+  .progress-label { font-size: 13px; color: var(--text-dim); }
+  .progress-count { font-size: 13px; color: var(--green); font-weight: 600; }
   .progress-bar {
     height: 6px;
     background: var(--card-bg);
@@ -125,11 +113,7 @@
   }
 
   /* Customer Cards */
-  .customer-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
+  .customer-list { display: flex; flex-direction: column; gap: 10px; }
 
   .customer-card {
     background: var(--card-bg);
@@ -158,7 +142,6 @@
     opacity: 0.7;
   }
   .customer-card.done::before { background: var(--green); }
-
   .customer-card:active { transform: scale(0.98); }
 
   .card-header {
@@ -167,10 +150,7 @@
     align-items: center;
     margin-bottom: 6px;
   }
-  .customer-name {
-    font-size: 16px;
-    font-weight: 600;
-  }
+  .customer-name { font-size: 16px; font-weight: 600; }
   .priority-tag {
     font-size: 11px;
     padding: 2px 8px;
@@ -181,20 +161,9 @@
   .tag-a { background: var(--yellow-bg); color: var(--yellow); }
   .tag-b { background: rgba(55,66,250,0.1); color: #7c83ff; }
 
-  .card-stage {
-    font-size: 12px;
-    color: var(--text-mid);
-    margin-bottom: 4px;
-  }
-  .card-issue {
-    font-size: 13px;
-    color: var(--text-dim);
-    margin-bottom: 4px;
-  }
-  .card-silent {
-    font-size: 11px;
-    color: var(--text-dim);
-  }
+  .card-stage { font-size: 12px; color: var(--text-mid); margin-bottom: 4px; }
+  .card-issue { font-size: 13px; color: var(--text-dim); margin-bottom: 4px; }
+  .card-silent { font-size: 11px; color: var(--text-dim); }
 
   /* Expandable Detail */
   .card-detail {
@@ -204,7 +173,7 @@
     opacity: 0;
   }
   .customer-card.expanded .card-detail {
-    max-height: 800px;
+    max-height: 1200px;
     opacity: 1;
   }
   .detail-divider {
@@ -235,9 +204,77 @@
     margin-bottom: 14px;
   }
 
-  /* Done Button */
+  /* A/B/C Tab Switcher */
+  .view-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 14px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    padding: 3px;
+  }
+  .view-tab {
+    flex: 1;
+    text-align: center;
+    padding: 7px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    background: none;
+    font-family: 'Noto Sans SC', sans-serif;
+  }
+  .view-tab.active {
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+  }
+  .view-tab:active { transform: scale(0.95); }
+
+  /* View panels */
+  .view-panel { display: none; }
+  .view-panel.active { display: block; }
+
+  /* B版决策简报额外样式 */
+  .brief-item {
+    margin-bottom: 10px;
+  }
+  .brief-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 2px;
+  }
+  .brief-value {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  /* C版全景报告额外样式 */
+  .report-section {
+    margin-bottom: 14px;
+  }
+  .report-section-title {
+    font-size: 12px;
+    color: var(--yellow);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .report-text {
+    font-size: 13px;
+    color: var(--text-mid);
+    line-height: 1.6;
+  }
+
+  /* Done Button + Undo */
+  .btn-group {
+    display: flex;
+    gap: 8px;
+  }
   .done-btn {
-    width: 100%;
+    flex: 1;
     padding: 12px;
     border-radius: 12px;
     border: none;
@@ -251,14 +288,28 @@
     background: var(--green);
     color: #000;
   }
-  .done-btn.pending:active {
-    transform: scale(0.97);
-  }
+  .done-btn.pending:active { transform: scale(0.97); }
   .done-btn.completed {
     background: rgba(46,213,115,0.1);
     color: var(--green);
     border: 1px solid rgba(46,213,115,0.2);
   }
+  .undo-btn {
+    display: none;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Noto Sans SC', sans-serif;
+    white-space: nowrap;
+  }
+  .undo-btn.visible { display: block; }
+  .undo-btn:active { transform: scale(0.97); background: rgba(255,255,255,0.04); }
 
   /* Animations */
   @keyframes fadeUp {
@@ -283,24 +334,19 @@
 <!-- Date Selector -->
 <div class="date-selector">
   <div class="date-btn active" onclick="switchDate(this, '0301')">
-    <span class="day-name">周六</span>
-    3/1
+    <span class="day-name">周六</span>3/1
   </div>
   <div class="date-btn" onclick="switchDate(this, '0302')">
-    <span class="day-name">周日</span>
-    3/2
+    <span class="day-name">周日</span>3/2
   </div>
   <div class="date-btn" onclick="switchDate(this, '0303')">
-    <span class="day-name">周一</span>
-    3/3
+    <span class="day-name">周一</span>3/3
   </div>
   <div class="date-btn" onclick="switchDate(this, '0304')">
-    <span class="day-name">周二</span>
-    3/4
+    <span class="day-name">周二</span>3/4
   </div>
   <div class="date-btn" onclick="switchDate(this, '0305')">
-    <span class="day-name">周三</span>
-    3/5
+    <span class="day-name">周三</span>3/5
   </div>
 </div>
 
@@ -308,7 +354,7 @@
 <div class="progress-section">
   <div class="progress-header">
     <span class="progress-label">今日进度</span>
-    <span class="progress-count" id="progress-text">0/8 已跟进</span>
+    <span class="progress-count" id="progress-text">0/3 已跟进</span>
   </div>
   <div class="progress-bar">
     <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
@@ -330,15 +376,78 @@
 
     <div class="card-detail">
       <div class="detail-divider"></div>
-      <div class="detail-section-title">下一步</div>
-      <div class="detail-action">先确认她倾向皮还是布，不要直接寄样。她家有小孩要好打理，科技布可能是最优解。</div>
-      <div class="detail-section-title">建议话术</div>
-      <div class="detail-script">
-        "张姐，之前咱聊了皮和布两个方向，我想了想你家有小朋友，我觉得可以重点看看科技布——防水防污好打理，看起来跟真皮也差不多。你觉得这个方向OK的话，我给你寄几块样看看手感？"
+
+      <!-- A/B/C Tab -->
+      <div class="view-tabs">
+        <button class="view-tab active" onclick="switchView(event, this, 'a')">行动卡片</button>
+        <button class="view-tab" onclick="switchView(event, this, 'b')">决策简报</button>
+        <button class="view-tab" onclick="switchView(event, this, 'c')">全景报告</button>
       </div>
-      <div class="detail-section-title">风险提示</div>
-      <div class="detail-action" style="color:var(--yellow);">中风险 · 孕晚期可能暂停决策，别催太紧</div>
-      <button class="done-btn pending" onclick="markDone(event, 'demo1')">✓ 已跟进</button>
+
+      <!-- A: 行动卡片 -->
+      <div class="view-panel active" data-view="a">
+        <div class="detail-section-title">下一步</div>
+        <div class="detail-action">先确认她倾向皮还是布，不要直接寄样。她家有小孩要好打理，科技布可能是最优解。</div>
+        <div class="detail-section-title">建议话术</div>
+        <div class="detail-script">
+          "张姐，之前咱聊了皮和布两个方向，我想了想你家有小朋友，我觉得可以重点看看科技布——防水防污好打理，看起来跟真皮也差不多。你觉得这个方向OK的话，我给你寄几块样看看手感？"
+        </div>
+        <div class="detail-section-title">风险提示</div>
+        <div class="detail-action" style="color:var(--yellow);">中风险 · 孕晚期可能暂停决策，别催太紧</div>
+      </div>
+
+      <!-- B: 决策简报 -->
+      <div class="view-panel" data-view="b">
+        <div class="brief-item">
+          <div class="brief-label">客户阶段</div>
+          <div class="brief-value">选材期 — 已有需求，面料方向未定</div>
+        </div>
+        <div class="brief-item">
+          <div class="brief-label">核心卡点</div>
+          <div class="brief-value">面料选择：皮 vs 布，需要好打理（家有小孩）</div>
+        </div>
+        <div class="brief-item">
+          <div class="brief-label">值得跟吗</div>
+          <div class="brief-value" style="color:var(--green);">值得 · 需求明确，预算充足，只差推一步</div>
+        </div>
+        <div class="brief-item">
+          <div class="brief-label">胜率</div>
+          <div class="brief-value">65% — 面料方向确认后可快速推进</div>
+        </div>
+        <div class="brief-item">
+          <div class="brief-label">流失风险</div>
+          <div class="brief-value" style="color:var(--yellow);">中 · 孕晚期精力有限，可能暂停</div>
+        </div>
+      </div>
+
+      <!-- C: 全景报告 -->
+      <div class="view-panel" data-view="c">
+        <div class="report-section">
+          <div class="report-section-title">客户画像</div>
+          <div class="report-text">孕晚期妈妈，家有两个小孩。对家具品质有要求，关注实用性和易打理。通过小红书了解到品牌，对复刻沙发有明确兴趣。</div>
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">互动历史</div>
+          <div class="report-text">首次咨询3月前，共聊天42条。前期聊了款式偏好，近期集中在面料选择。销售响应及时，但未主动引导面料决策。</div>
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">竞品分析</div>
+          <div class="report-text">提到过"另一家也有类似的"，疑似在对比其他复刻品牌。未提及具体竞品名称，价格敏感度低。</div>
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">销售行为诊断</div>
+          <div class="report-text">响应速度良好（平均2h内），但缺少主动跟进。客户沉默3天未触发跟进，建议设置48h跟进提醒。</div>
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">风险成本评估</div>
+          <div class="report-text">预估客单价¥22,000。当前投入时间成本约2h，ROI良好。主要风险：孕晚期决策延迟，建议保持低压力持续触达。</div>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="done-btn pending" onclick="markDone(event, 'demo1')">✓ 已跟进</button>
+        <button class="undo-btn" onclick="undoDone(event, 'demo1')">撤销</button>
+      </div>
     </div>
   </div>
 
@@ -354,13 +463,60 @@
 
     <div class="card-detail">
       <div class="detail-divider"></div>
-      <div class="detail-section-title">下一步</div>
-      <div class="detail-action">寄两种面料样品让她对比手感。她已经认可品牌了，卡点就在选面料，推一把就能进议价。</div>
-      <div class="detail-section-title">建议话术</div>
-      <div class="detail-script">
-        "小米姐，上次你说雪尼尔和科技布都喜欢，要不我给你各寄一块？摸到手感就好选了，很多客户都是摸完马上就定了～"
+
+      <div class="view-tabs">
+        <button class="view-tab active" onclick="switchView(event, this, 'a')">行动卡片</button>
+        <button class="view-tab" onclick="switchView(event, this, 'b')">决策简报</button>
+        <button class="view-tab" onclick="switchView(event, this, 'c')">全景报告</button>
       </div>
-      <button class="done-btn pending" onclick="markDone(event, 'demo2')">✓ 已跟进</button>
+
+      <div class="view-panel active" data-view="a">
+        <div class="detail-section-title">下一步</div>
+        <div class="detail-action">先帮她缩小面料范围，问清楚家里使用场景（有没有小孩/宠物/日照强不强），再决定是否寄样。</div>
+        <div class="detail-section-title">建议话术</div>
+        <div class="detail-script">
+          "小米姐，雪尼尔和科技布各有优势～我帮你缩小一下范围：你家平时有小朋友或宠物吗？如果需要耐磨好打理，科技布会更合适；如果追求触感柔软，雪尼尔体验感更好。你先告诉我，我帮你选最适合的寄过去看看？"
+        </div>
+      </div>
+
+      <div class="view-panel" data-view="b">
+        <div class="brief-item">
+          <div class="brief-label">客户阶段</div>
+          <div class="brief-value">选材期 — 品牌已认可，面料犹豫中</div>
+        </div>
+        <div class="brief-item">
+          <div class="brief-label">核心卡点</div>
+          <div class="brief-value">雪尼尔 vs 科技布，缺少决策依据</div>
+        </div>
+        <div class="brief-item">
+          <div class="brief-label">值得跟吗</div>
+          <div class="brief-value" style="color:var(--green);">值得 · 品牌认可度高，推一步就进议价</div>
+        </div>
+        <div class="brief-item">
+          <div class="brief-label">胜率</div>
+          <div class="brief-value">70% — 帮她选定面料后大概率成交</div>
+        </div>
+      </div>
+
+      <div class="view-panel" data-view="c">
+        <div class="report-section">
+          <div class="report-section-title">客户画像</div>
+          <div class="report-text">对品牌认可度高，主动咨询多款沙发。对面料品质敏感，喜欢对比不同材质。决策风格偏理性，需要充分信息支撑。</div>
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">互动历史</div>
+          <div class="report-text">28条聊天记录，集中在面料讨论。上次聊天5天前，话题在雪尼尔和科技布间反复，未做出倾向性选择。</div>
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">销售行为诊断</div>
+          <div class="report-text">面料介绍到位，但缺少场景化引导。建议根据客户家庭使用场景缩小选择范围，降低决策难度。</div>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="done-btn pending" onclick="markDone(event, 'demo2')">✓ 已跟进</button>
+        <button class="undo-btn" onclick="undoDone(event, 'demo2')">撤销</button>
+      </div>
     </div>
   </div>
 
@@ -376,35 +532,94 @@
 
     <div class="card-detail">
       <div class="detail-divider"></div>
-      <div class="detail-section-title">下一步</div>
-      <div class="detail-action">解决运输信任问题。发之前海外客户的开箱视频/照片，展示包装质量。强调运输保险和售后承诺。</div>
-      <div class="detail-section-title">建议话术</div>
-      <div class="detail-script">
-        "Lily你好～上次你问的海运问题我整理了一下：我们发加拿大的客户已经有好几个了，全程木架打包+运输险全保。给你看几个客户收到货的照片，包装完好的👇"
+
+      <div class="view-tabs">
+        <button class="view-tab active" onclick="switchView(event, this, 'a')">行动卡片</button>
+        <button class="view-tab" onclick="switchView(event, this, 'b')">决策简报</button>
+        <button class="view-tab" onclick="switchView(event, this, 'c')">全景报告</button>
       </div>
-      <button class="done-btn pending" onclick="markDone(event, 'demo3')">✓ 已跟进</button>
+
+      <div class="view-panel active" data-view="a">
+        <div class="detail-section-title">下一步</div>
+        <div class="detail-action">解决运输信任问题。发之前海外客户的开箱视频/照片，展示包装质量。强调运输保险和售后承诺。</div>
+        <div class="detail-section-title">建议话术</div>
+        <div class="detail-script">
+          "Lily你好～上次你问的海运问题我整理了一下：我们发加拿大的客户已经有好几个了，全程木架打包+运输险全保。给你看几个客户收到货的照片，包装完好的👇"
+        </div>
+      </div>
+
+      <div class="view-panel" data-view="b">
+        <div class="brief-item">
+          <div class="brief-label">客户阶段</div>
+          <div class="brief-value">选品期 — 款式基本确定，卡在物流信任</div>
+        </div>
+        <div class="brief-item">
+          <div class="brief-label">核心卡点</div>
+          <div class="brief-value">海运损坏风险、售后保障不明确</div>
+        </div>
+        <div class="brief-item">
+          <div class="brief-label">值得跟吗</div>
+          <div class="brief-value" style="color:var(--green);">值得 · 购买力充足，卡点不是价格</div>
+        </div>
+        <div class="brief-item">
+          <div class="brief-label">胜率</div>
+          <div class="brief-value">55% — 解决运输顾虑后可推进</div>
+        </div>
+        <div class="brief-item">
+          <div class="brief-label">海外客户注意</div>
+          <div class="brief-value" style="color:var(--yellow);">购买力看间接信号，卡点优先考虑运输信任</div>
+        </div>
+      </div>
+
+      <div class="view-panel" data-view="c">
+        <div class="report-section">
+          <div class="report-section-title">客户画像</div>
+          <div class="report-text">加拿大华人，英文沟通为主。对品质有要求，价格敏感度低。主要顾虑是跨国物流的可靠性和售后服务。</div>
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">竞品分析</div>
+          <div class="report-text">真竞品不是其他复刻品牌，而是当地家具店和淘宝直邮。核心优势需打在：品质+专业包装+运输保障。</div>
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">互动历史</div>
+          <div class="report-text">35条聊天，前期款式讨论积极。近12天沉默始于询问运费和保险后未得到满意答复。回复间隔明显拉长。</div>
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">流失预测</div>
+          <div class="report-text" style="color:var(--yellow);">中高风险 · 回复间隔从1天拉到5天，消息变短，语气趋冷。再不跟进可能彻底流失。</div>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="done-btn pending" onclick="markDone(event, 'demo3')">✓ 已跟进</button>
+        <button class="undo-btn" onclick="undoDone(event, 'demo3')">撤销</button>
+      </div>
     </div>
   </div>
 
 </div>
 
 <script>
-// --- Google Sheets Integration ---
-// 替换为你的Google Apps Script Web App URL
 const SHEET_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL';
-
-// 销售名称
 const SALES_NAME = '可欣';
 
 function toggleCard(card) {
-  if (event.target.closest('.done-btn')) return;
+  if (event.target.closest('.done-btn') || event.target.closest('.undo-btn') || event.target.closest('.view-tab')) return;
   card.classList.toggle('expanded');
+}
+
+function switchView(e, tab, view) {
+  e.stopPropagation();
+  const card = tab.closest('.customer-card');
+  card.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  card.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+  tab.classList.add('active');
+  card.querySelector(`.view-panel[data-view="${view}"]`).classList.add('active');
 }
 
 function switchDate(btn, date) {
   document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  // TODO: 切换日期后加载对应客户列表
   updateProgress();
 }
 
@@ -412,14 +627,16 @@ function markDone(e, customerId) {
   e.stopPropagation();
   const card = document.querySelector(`[data-id="${customerId}"]`);
   const btn = card.querySelector('.done-btn');
-  
+  const undoBtn = card.querySelector('.undo-btn');
+
   if (card.classList.contains('done')) return;
-  
+
   card.classList.add('done');
   btn.classList.remove('pending');
   btn.classList.add('completed');
   btn.textContent = '✓ 已完成';
-  
+  undoBtn.classList.add('visible');
+
   // 记录到本地
   const doneList = JSON.parse(localStorage.getItem('done') || '[]');
   doneList.push({
@@ -428,7 +645,7 @@ function markDone(e, customerId) {
     time: new Date().toISOString()
   });
   localStorage.setItem('done', JSON.stringify(doneList));
-  
+
   // 同步到Google Sheets
   if (SHEET_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_URL') {
     fetch(SHEET_URL, {
@@ -444,7 +661,42 @@ function markDone(e, customerId) {
       })
     }).catch(err => console.log('Sync failed, saved locally'));
   }
-  
+
+  updateProgress();
+}
+
+function undoDone(e, customerId) {
+  e.stopPropagation();
+  const card = document.querySelector(`[data-id="${customerId}"]`);
+  const btn = card.querySelector('.done-btn');
+  const undoBtn = card.querySelector('.undo-btn');
+
+  card.classList.remove('done');
+  btn.classList.remove('completed');
+  btn.classList.add('pending');
+  btn.textContent = '✓ 已跟进';
+  undoBtn.classList.remove('visible');
+
+  // 从本地移除
+  let doneList = JSON.parse(localStorage.getItem('done') || '[]');
+  doneList = doneList.filter(item => item.id !== customerId);
+  localStorage.setItem('done', JSON.stringify(doneList));
+
+  // 同步撤销到Google Sheets
+  if (SHEET_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_URL') {
+    fetch(SHEET_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'undoDone',
+        sales: SALES_NAME,
+        customerId: customerId,
+        time: new Date().toISOString()
+      })
+    }).catch(err => console.log('Undo sync failed'));
+  }
+
   updateProgress();
 }
 
@@ -468,6 +720,8 @@ saved.forEach(item => {
     btn.classList.remove('pending');
     btn.classList.add('completed');
     btn.textContent = '✓ 已完成';
+    const undoBtn = card.querySelector('.undo-btn');
+    undoBtn.classList.add('visible');
   }
 });
 updateProgress();
