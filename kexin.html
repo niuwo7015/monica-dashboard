@@ -4303,3 +4303,139 @@
       </div>
     </div>
   </div>
+</div>
+<script>
+
+
+
+const SHEET_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL';
+const SALES_NAME = '可欣';
+
+function toggleCard(card) {
+  if (event.target.closest('.done-btn') || event.target.closest('.undo-btn') || event.target.closest('.view-tab')) return;
+  card.classList.toggle('expanded');
+}
+
+function switchView(e, tab, view) {
+  e.stopPropagation();
+  const card = tab.closest('.customer-card');
+  card.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  card.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+  tab.classList.add('active');
+  card.querySelector(`.view-panel[data-view="${view}"]`).classList.add('active');
+}
+
+function switchDate(btn, date) {
+  document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateProgress();
+}
+
+function markDone(e, customerId) {
+  e.stopPropagation();
+  const card = document.querySelector(`[data-id="${customerId}"]`);
+  const btn = card.querySelector('.done-btn');
+  const undoBtn = card.querySelector('.undo-btn');
+
+  if (card.classList.contains('done')) return;
+
+  card.classList.add('done');
+  btn.classList.remove('pending');
+  btn.classList.add('completed');
+  btn.textContent = '✓ 已完成';
+  undoBtn.classList.add('visible');
+
+  // 记录到本地
+  const doneList = JSON.parse(localStorage.getItem('done') || '[]');
+  doneList.push({
+    id: customerId,
+    sales: SALES_NAME,
+    time: new Date().toISOString()
+  });
+  localStorage.setItem('done', JSON.stringify(doneList));
+
+  // 同步到Google Sheets
+  if (SHEET_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_URL') {
+    fetch(SHEET_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'markDone',
+        sales: SALES_NAME,
+        customerId: customerId,
+        customerName: card.querySelector('.customer-name').textContent,
+        time: new Date().toISOString()
+      })
+    }).catch(err => console.log('Sync failed, saved locally'));
+  }
+
+  updateProgress();
+}
+
+function undoDone(e, customerId) {
+  e.stopPropagation();
+  const card = document.querySelector(`[data-id="${customerId}"]`);
+  const btn = card.querySelector('.done-btn');
+  const undoBtn = card.querySelector('.undo-btn');
+
+  card.classList.remove('done');
+  btn.classList.remove('completed');
+  btn.classList.add('pending');
+  btn.textContent = '✓ 已跟进';
+  undoBtn.classList.remove('visible');
+
+  // 从本地移除
+  let doneList = JSON.parse(localStorage.getItem('done') || '[]');
+  doneList = doneList.filter(item => item.id !== customerId);
+  localStorage.setItem('done', JSON.stringify(doneList));
+
+  // 同步撤销到Google Sheets
+  if (SHEET_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_URL') {
+    fetch(SHEET_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'undoDone',
+        sales: SALES_NAME,
+        customerId: customerId,
+        time: new Date().toISOString()
+      })
+    }).catch(err => console.log('Undo sync failed'));
+  }
+
+  updateProgress();
+}
+
+function updateProgress() {
+  const total = document.querySelectorAll('.customer-card').length;
+  const done = document.querySelectorAll('.customer-card.done').length;
+  document.getElementById('progress-text').textContent = `${done}/${total} 已跟进`;
+  document.getElementById('progress-fill').style.width = `${(done/total)*100}%`;
+}
+
+// Init
+updateProgress();
+
+// 恢复已完成状态
+const saved = JSON.parse(localStorage.getItem('done') || '[]');
+saved.forEach(item => {
+  const card = document.querySelector(`[data-id="${item.id}"]`);
+  if (card) {
+    card.classList.add('done');
+    const btn = card.querySelector('.done-btn');
+    btn.classList.remove('pending');
+    btn.classList.add('completed');
+    btn.textContent = '✓ 已完成';
+    const undoBtn = card.querySelector('.undo-btn');
+    undoBtn.classList.add('visible');
+  }
+});
+updateProgress();
+
+
+
+</script>
+</body>
+</html>
