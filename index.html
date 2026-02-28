@@ -9,16 +9,12 @@
   :root {
     --bg: #0f0f0f;
     --card-bg: #1a1a1a;
-    --card-hover: #222;
     --red: #ff4757;
     --red-bg: rgba(255,71,87,0.08);
-    --red-glow: rgba(255,71,87,0.15);
     --yellow: #ffa502;
     --yellow-bg: rgba(255,165,2,0.08);
-    --yellow-glow: rgba(255,165,2,0.15);
     --blue: #3742fa;
     --blue-bg: rgba(55,66,250,0.08);
-    --blue-glow: rgba(55,66,250,0.15);
     --green: #2ed573;
     --green-bg: rgba(46,213,115,0.08);
     --text: #f1f1f1;
@@ -26,436 +22,153 @@
     --text-mid: #bbb;
     --radius: 16px;
   }
-
   * { margin:0; padding:0; box-sizing:border-box; }
-
   body {
     font-family: 'Noto Sans SC', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 20px 16px 40px;
-    max-width: 480px;
-    margin: 0 auto;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 20px 16px 40px;
+    max-width: 480px; margin: 0 auto;
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Header */
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 28px;
-    padding: 0 4px;
-  }
-  .header-left h1 {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-  }
-  .header-left .date {
-    font-size: 13px;
-    color: var(--text-dim);
-    margin-top: 2px;
-  }
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--green-bg);
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 13px;
-    color: var(--green);
-    font-weight: 500;
-  }
+  .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; padding:0 4px; }
+  .header-left h1 { font-size:22px; font-weight:700; letter-spacing:-0.5px; }
+  .header-left .date { font-size:13px; color:var(--text-dim); margin-top:2px; }
+  .header-right { display:flex; align-items:center; gap:6px; background:var(--green-bg); padding:6px 12px; border-radius:20px; font-size:13px; color:var(--green); font-weight:500; }
 
-  /* Summary Cards - The 3-second layer */
-  .summary-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-bottom: 32px;
-  }
+  /* Today Summary */
+  .today-summary { display:flex; gap:8px; margin-bottom:24px; }
+  .today-chip { flex:1; background:var(--card-bg); border-radius:12px; padding:14px 8px; text-align:center; border:1px solid rgba(255,255,255,0.04); }
+  .today-chip-value { font-size:24px; font-weight:800; line-height:1; }
+  .today-chip-label { font-size:10px; color:var(--text-dim); margin-top:4px; }
+  .today-chip.warn .today-chip-value { color:var(--red); }
+  .today-chip.good .today-chip-value { color:var(--green); }
+  .today-chip.alert .today-chip-value { color:var(--yellow); }
 
-  .summary-card {
-    background: var(--card-bg);
-    border-radius: var(--radius);
-    padding: 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1px solid transparent;
-    position: relative;
-    overflow: hidden;
-  }
-  .summary-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 4px;
-    height: 100%;
-    border-radius: 4px 0 0 4px;
-  }
-  .summary-card.red::before { background: var(--red); }
-  .summary-card.red { border-color: rgba(255,71,87,0.12); background: linear-gradient(135deg, var(--red-bg), var(--card-bg)); }
-  .summary-card.yellow::before { background: var(--yellow); }
-  .summary-card.yellow { border-color: rgba(255,165,2,0.12); background: linear-gradient(135deg, var(--yellow-bg), var(--card-bg)); }
-  .summary-card.blue::before { background: var(--blue); }
-  .summary-card.blue { border-color: rgba(55,66,250,0.12); background: linear-gradient(135deg, var(--blue-bg), var(--card-bg)); }
+  /* Summary Cards */
+  .summary-grid { display:flex; flex-direction:column; gap:12px; margin-bottom:32px; }
+  .summary-card { background:var(--card-bg); border-radius:var(--radius); padding:20px; cursor:pointer; transition:all 0.2s ease; border:1px solid transparent; position:relative; overflow:hidden; }
+  .summary-card::before { content:''; position:absolute; top:0; left:0; width:4px; height:100%; border-radius:4px 0 0 4px; }
+  .summary-card.red::before { background:var(--red); }
+  .summary-card.red { border-color:rgba(255,71,87,0.12); background:linear-gradient(135deg, var(--red-bg), var(--card-bg)); }
+  .summary-card.yellow::before { background:var(--yellow); }
+  .summary-card.yellow { border-color:rgba(255,165,2,0.12); background:linear-gradient(135deg, var(--yellow-bg), var(--card-bg)); }
+  .summary-card.blue::before { background:var(--blue); }
+  .summary-card.blue { border-color:rgba(55,66,250,0.12); background:linear-gradient(135deg, var(--blue-bg), var(--card-bg)); }
+  .summary-card:active { transform:scale(0.98); }
 
-  .summary-card:active { transform: scale(0.98); }
+  .card-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .card-label { font-size:14px; color:var(--text-mid); }
+  .card-arrow { font-size:18px; color:var(--text-dim); transition:transform 0.3s ease; }
+  .summary-card.expanded .card-arrow { transform:rotate(90deg); }
+  .card-number { font-size:42px; font-weight:900; line-height:1; margin-bottom:4px; letter-spacing:-2px; }
+  .summary-card.red .card-number { color:var(--red); }
+  .summary-card.yellow .card-number { color:var(--yellow); }
+  .summary-card.blue .card-number { color:var(--blue); }
+  .card-subtitle { font-size:13px; color:var(--text-dim); }
 
-  .card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-  .card-label {
-    font-size: 14px;
-    color: var(--text-mid);
-    font-weight: 400;
-  }
-  .card-arrow {
-    font-size: 18px;
-    color: var(--text-dim);
-    transition: transform 0.3s ease;
-  }
-  .summary-card.expanded .card-arrow {
-    transform: rotate(90deg);
-  }
-  .card-number {
-    font-size: 42px;
-    font-weight: 900;
-    line-height: 1;
-    margin-bottom: 4px;
-    letter-spacing: -2px;
-  }
-  .summary-card.red .card-number { color: var(--red); }
-  .summary-card.yellow .card-number { color: var(--yellow); }
-  .summary-card.blue .card-number { color: var(--blue); }
+  .card-detail { max-height:0; overflow:hidden; transition:max-height 0.4s ease, opacity 0.3s ease; opacity:0; }
+  .summary-card.expanded .card-detail { max-height:600px; opacity:1; }
+  .sales-card-wrap.expanded .card-detail { max-height:800px; opacity:1; }
+  .detail-divider { height:1px; background:rgba(255,255,255,0.06); margin:16px 0; }
+  .detail-item { display:flex; justify-content:space-between; align-items:flex-start; padding:12px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+  .detail-item:last-child { border-bottom:none; }
+  .detail-name { font-size:15px; font-weight:500; margin-bottom:3px; }
+  .detail-reason { font-size:12px; color:var(--text-dim); max-width:220px; }
+  .detail-action { font-size:12px; padding:4px 10px; border-radius:8px; white-space:nowrap; font-weight:500; flex-shrink:0; margin-left:12px; align-self:center; }
+  .red .detail-action { background:var(--red-bg); color:var(--red); border:1px solid rgba(255,71,87,0.2); }
+  .yellow .detail-action { background:var(--yellow-bg); color:var(--yellow); border:1px solid rgba(255,165,2,0.2); }
 
-  .card-subtitle {
-    font-size: 13px;
-    color: var(--text-dim);
-  }
+  /* Section */
+  .section-title { font-size:13px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:14px; padding-left:4px; }
 
-  /* Expandable Detail Layer */
-  .card-detail {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.4s ease, opacity 0.3s ease;
-    opacity: 0;
-  }
-  .summary-card.expanded .card-detail {
-    max-height: 600px;
-    opacity: 1;
-  }
-  .detail-divider {
-    height: 1px;
-    background: rgba(255,255,255,0.06);
-    margin: 16px 0;
-  }
-  .detail-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 12px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-  }
-  .detail-item:last-child { border-bottom: none; }
-  .detail-name {
-    font-size: 15px;
-    font-weight: 500;
-    margin-bottom: 3px;
-  }
-  .detail-reason {
-    font-size: 12px;
-    color: var(--text-dim);
-    max-width: 220px;
-  }
-  .detail-action {
-    font-size: 12px;
-    padding: 4px 10px;
-    border-radius: 8px;
-    white-space: nowrap;
-    font-weight: 500;
-    flex-shrink: 0;
-    margin-left: 12px;
-    align-self: center;
-  }
-  .red .detail-action {
-    background: var(--red-bg);
-    color: var(--red);
-    border: 1px solid rgba(255,71,87,0.2);
-  }
-  .yellow .detail-action {
-    background: var(--yellow-bg);
-    color: var(--yellow);
-    border: 1px solid rgba(255,165,2,0.2);
-  }
+  /* Sales Cards */
+  .sales-cards { display:flex; flex-direction:column; gap:10px; margin-bottom:32px; }
+  .sales-card-wrap { background:var(--card-bg); border-radius:var(--radius); border:1px solid rgba(255,255,255,0.04); overflow:hidden; cursor:pointer; transition:all 0.2s ease; }
+  .sales-card-wrap:active { transform:scale(0.98); }
+  .sales-card-header { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; }
+  .sales-info { display:flex; align-items:center; gap:12px; }
+  .sales-avatar { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700; color:var(--text); }
+  .sales-name { font-size:15px; font-weight:500; }
+  .sales-status { font-size:12px; color:var(--text-dim); margin-top:1px; }
+  .sales-metrics { display:flex; gap:14px; align-items:center; }
+  .metric { text-align:center; }
+  .metric-value { font-size:18px; font-weight:700; }
+  .metric-label { font-size:10px; color:var(--text-dim); margin-top:1px; }
+  .metric-warn .metric-value { color:var(--red); }
+  .metric-good .metric-value { color:var(--green); }
 
-  /* Sales Section */
-  .section-title {
-    font-size: 13px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 14px;
-    padding-left: 4px;
-  }
+  /* Sales detail */
+  .sales-detail { padding:0 20px 16px; }
+  .sales-detail-divider { height:1px; background:rgba(255,255,255,0.06); margin-bottom:12px; }
+  .sales-detail-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .sales-detail-title { font-size:12px; color:var(--text-dim); }
+  .sales-detail-link { font-size:12px; color:var(--blue); text-decoration:none; padding:4px 10px; border-radius:8px; background:var(--blue-bg); border:1px solid rgba(55,66,250,0.2); }
 
-  .sales-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 32px;
-  }
+  .follow-item { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+  .follow-item:last-child { border-bottom:none; }
+  .follow-left { display:flex; align-items:center; gap:8px; }
+  .follow-priority { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .follow-priority.s { background:var(--red); }
+  .follow-priority.a { background:var(--yellow); }
+  .follow-priority.b { background:var(--blue); }
+  .follow-name { font-size:14px; font-weight:500; }
+  .follow-time { font-size:10px; color:var(--text-dim); margin-top:2px; }
+  .follow-status { font-size:12px; padding:4px 10px; border-radius:8px; font-weight:500; white-space:nowrap; }
+  .status-done { background:var(--green-bg); color:var(--green); border:1px solid rgba(46,213,115,0.2); }
+  .status-pending { background:rgba(255,255,255,0.04); color:var(--text-dim); border:1px solid rgba(255,255,255,0.08); }
+  .status-overdue { background:var(--red-bg); color:var(--red); border:1px solid rgba(255,71,87,0.2); }
 
-  .sales-card {
-    background: var(--card-bg);
-    border-radius: var(--radius);
-    padding: 16px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1px solid rgba(255,255,255,0.04);
-  }
-  .sales-card:active { transform: scale(0.98); }
-
-  .sales-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .sales-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text);
-  }
-  .sales-name {
-    font-size: 15px;
-    font-weight: 500;
-  }
-  .sales-status {
-    font-size: 12px;
-    color: var(--text-dim);
-    margin-top: 1px;
-  }
-  .sales-metrics {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-  }
-  .metric {
-    text-align: center;
-  }
-  .metric-value {
-    font-size: 18px;
-    font-weight: 700;
-  }
-  .metric-label {
-    font-size: 10px;
-    color: var(--text-dim);
-    margin-top: 1px;
-  }
-  .metric-warn .metric-value { color: var(--red); }
-
-  /* Quick Stats Bar */
-  .stats-bar {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 32px;
-  }
-  .stat-chip {
-    flex: 1;
-    background: var(--card-bg);
-    border-radius: 12px;
-    padding: 14px 12px;
-    text-align: center;
-    border: 1px solid rgba(255,255,255,0.04);
-  }
-  .stat-value {
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--text);
-  }
-  .stat-label {
-    font-size: 10px;
-    color: var(--text-dim);
-    margin-top: 2px;
-  }
+  /* Stats Bar */
+  .stats-bar { display:flex; gap:8px; margin-bottom:32px; }
+  .stat-chip { flex:1; background:var(--card-bg); border-radius:12px; padding:14px 12px; text-align:center; border:1px solid rgba(255,255,255,0.04); }
+  .stat-value { font-size:20px; font-weight:700; }
+  .stat-label { font-size:10px; color:var(--text-dim); margin-top:2px; }
 
   /* Animations */
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+  .today-summary { animation: fadeUp 0.5s ease 0.02s both; }
   .summary-card:nth-child(1) { animation: fadeUp 0.5s ease 0.05s both; }
   .summary-card:nth-child(2) { animation: fadeUp 0.5s ease 0.15s both; }
   .summary-card:nth-child(3) { animation: fadeUp 0.5s ease 0.25s both; }
-  .section-title { animation: fadeUp 0.5s ease 0.3s both; }
-  .sales-card:nth-child(1) { animation: fadeUp 0.5s ease 0.35s both; }
-  .sales-card:nth-child(2) { animation: fadeUp 0.5s ease 0.4s both; }
-  .sales-card:nth-child(3) { animation: fadeUp 0.5s ease 0.45s both; }
-  .stats-bar { animation: fadeUp 0.5s ease 0.5s both; }
+  .sales-card-wrap:nth-child(1) { animation: fadeUp 0.5s ease 0.35s both; }
+  .sales-card-wrap:nth-child(2) { animation: fadeUp 0.5s ease 0.4s both; }
+  .sales-card-wrap:nth-child(3) { animation: fadeUp 0.5s ease 0.45s both; }
 
-  /* Pulse for urgent */
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-  }
-  .urgent-dot {
-    width: 8px;
-    height: 8px;
-    background: var(--red);
-    border-radius: 50%;
-    display: inline-block;
-    animation: pulse 2s ease-in-out infinite;
-    margin-right: 4px;
-    vertical-align: middle;
-  }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+  .urgent-dot { width:8px; height:8px; background:var(--red); border-radius:50%; display:inline-block; animation:pulse 2s ease-in-out infinite; margin-right:4px; vertical-align:middle; }
 
-  /* Tab Navigation */
-  .tab-nav {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 24px;
-    background: var(--card-bg);
-    border-radius: 12px;
-    padding: 4px;
-  }
-  .tab {
-    flex: 1;
-    text-align: center;
-    padding: 10px;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-dim);
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  .tab.active {
-    background: rgba(255,255,255,0.08);
-    color: var(--text);
-  }
+  /* Tabs */
+  .tab-nav { display:flex; gap:4px; margin-bottom:24px; background:var(--card-bg); border-radius:12px; padding:4px; }
+  .tab { flex:1; text-align:center; padding:10px; border-radius:10px; font-size:14px; font-weight:500; color:var(--text-dim); cursor:pointer; transition:all 0.2s ease; }
+  .tab.active { background:rgba(255,255,255,0.08); color:var(--text); }
+  .page { display:none; }
+  .page.active { display:block; }
 
-  /* Page switching */
-  .page { display: none; }
-  .page.active { display: block; }
-
-  /* Value page styles */
-  .value-hero {
-    text-align: center;
-    padding: 32px 20px;
-    margin-bottom: 20px;
-    background: linear-gradient(135deg, rgba(46,213,115,0.06), rgba(55,66,250,0.06));
-    border-radius: var(--radius);
-    border: 1px solid rgba(46,213,115,0.1);
-  }
-  .value-hero-label {
-    font-size: 13px;
-    color: var(--text-dim);
-    margin-bottom: 8px;
-  }
-  .value-hero-number {
-    font-size: 56px;
-    font-weight: 900;
-    color: var(--green);
-    letter-spacing: -3px;
-    line-height: 1;
-    margin-bottom: 8px;
-  }
-  .value-hero-sub {
-    font-size: 12px;
-    color: var(--text-dim);
-  }
-
-  .value-card {
-    background: var(--card-bg);
-    border-radius: var(--radius);
-    padding: 20px;
-    margin-bottom: 10px;
-    cursor: pointer;
-    border: 1px solid rgba(255,255,255,0.04);
-    overflow: hidden;
-  }
-  .value-card:active { transform: scale(0.98); }
-  .value-stat {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin-top: 8px;
-  }
-  .value-big {
-    font-size: 28px;
-    font-weight: 900;
-    letter-spacing: -1px;
-  }
-  .red-text { color: var(--red); }
-  .yellow-text { color: var(--yellow); }
-  .green-text { color: var(--green); }
-  .value-desc {
-    font-size: 13px;
-    color: var(--text-dim);
-  }
-  .value-explain {
-    font-size: 13px;
-    line-height: 1.7;
-    color: var(--text-mid);
-  }
-  .value-explain p { margin-bottom: 8px; }
-  .value-explain strong { color: var(--text); font-weight: 600; }
-
-  /* Compare row */
-  .compare-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 32px;
-  }
-  .compare-box {
-    flex: 1;
-    background: var(--card-bg);
-    border-radius: 14px;
-    padding: 18px 14px;
-    text-align: center;
-    border: 1px solid rgba(255,255,255,0.04);
-  }
-  .compare-box.highlight {
-    border-color: rgba(46,213,115,0.2);
-    background: linear-gradient(135deg, var(--green-bg), var(--card-bg));
-  }
-  .compare-label {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-bottom: 6px;
-  }
-  .compare-value {
-    font-size: 26px;
-    font-weight: 900;
-    letter-spacing: -1px;
-  }
-  .compare-box.highlight .compare-value { color: var(--green); }
-  .compare-sub {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-top: 4px;
-  }
-  .compare-arrow {
-    font-size: 20px;
-    color: var(--text-dim);
-    flex-shrink: 0;
-  }
+  /* Value page */
+  .value-hero { text-align:center; padding:32px 20px; margin-bottom:20px; background:linear-gradient(135deg, rgba(46,213,115,0.06), rgba(55,66,250,0.06)); border-radius:var(--radius); border:1px solid rgba(46,213,115,0.1); }
+  .value-hero-label { font-size:13px; color:var(--text-dim); margin-bottom:8px; }
+  .value-hero-number { font-size:56px; font-weight:900; color:var(--green); letter-spacing:-3px; line-height:1; margin-bottom:8px; }
+  .value-hero-sub { font-size:12px; color:var(--text-dim); }
+  .value-card { background:var(--card-bg); border-radius:var(--radius); padding:20px; margin-bottom:10px; cursor:pointer; border:1px solid rgba(255,255,255,0.04); overflow:hidden; }
+  .value-card:active { transform:scale(0.98); }
+  .value-stat { display:flex; align-items:baseline; gap:10px; margin-top:8px; }
+  .value-big { font-size:28px; font-weight:900; letter-spacing:-1px; }
+  .red-text { color:var(--red); }
+  .yellow-text { color:var(--yellow); }
+  .green-text { color:var(--green); }
+  .value-desc { font-size:13px; color:var(--text-dim); }
+  .value-explain { font-size:13px; line-height:1.7; color:var(--text-mid); }
+  .value-explain p { margin-bottom:8px; }
+  .value-explain strong { color:var(--text); font-weight:600; }
+  .compare-row { display:flex; align-items:center; gap:8px; margin-bottom:32px; }
+  .compare-box { flex:1; background:var(--card-bg); border-radius:14px; padding:18px 14px; text-align:center; border:1px solid rgba(255,255,255,0.04); }
+  .compare-box.highlight { border-color:rgba(46,213,115,0.2); background:linear-gradient(135deg, var(--green-bg), var(--card-bg)); }
+  .compare-label { font-size:11px; color:var(--text-dim); margin-bottom:6px; }
+  .compare-value { font-size:26px; font-weight:900; letter-spacing:-1px; }
+  .compare-box.highlight .compare-value { color:var(--green); }
+  .compare-sub { font-size:11px; color:var(--text-dim); margin-top:4px; }
+  .compare-arrow { font-size:20px; color:var(--text-dim); flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -465,24 +178,39 @@
     <h1>莫妮卡摩卡</h1>
     <div class="date">3月1日 周六</div>
   </div>
-  <div class="header-right">
-    <span>●</span> 系统正常
-  </div>
+  <div class="header-right"><span>●</span> 系统正常</div>
 </div>
 
-<!-- Tab Navigation -->
 <div class="tab-nav">
   <div class="tab active" onclick="switchTab('daily')">今日看板</div>
   <div class="tab" onclick="switchTab('value')">AI价值测算</div>
 </div>
 
-<!-- PAGE 1: Daily Dashboard -->
+<!-- PAGE 1 -->
 <div id="page-daily" class="page active">
 
-<!-- 3-second layer: Three cards -->
-<div class="summary-grid">
+<!-- 5-7: Today Summary -->
+<div class="today-summary">
+  <div class="today-chip">
+    <div class="today-chip-value">20</div>
+    <div class="today-chip-label">今日待跟进</div>
+  </div>
+  <div class="today-chip good">
+    <div class="today-chip-value">8</div>
+    <div class="today-chip-label">已完成</div>
+  </div>
+  <div class="today-chip warn">
+    <div class="today-chip-value">3</div>
+    <div class="today-chip-label">超时未跟</div>
+  </div>
+  <div class="today-chip alert">
+    <div class="today-chip-value">3</div>
+    <div class="today-chip-label">流失预警</div>
+  </div>
+</div>
 
-  <!-- RED: Urgent -->
+<!-- 3-second layer -->
+<div class="summary-grid">
   <div class="summary-card red" onclick="toggleCard(this)">
     <div class="card-top">
       <span class="card-label"><span class="urgent-dot"></span>即将流失</span>
@@ -492,31 +220,12 @@
     <div class="card-subtitle">个客户需要立刻处理</div>
     <div class="card-detail">
       <div class="detail-divider"></div>
-      <div class="detail-item">
-        <div>
-          <div class="detail-name">张姐 (Jane)</div>
-          <div class="detail-reason">孕晚期，7天没回消息，面料方向还没定</div>
-        </div>
-        <div class="detail-action">确认面料方向</div>
-      </div>
-      <div class="detail-item">
-        <div>
-          <div class="detail-name">赵赵</div>
-          <div class="detail-reason">挑剔型客户，沉默5天，可能在比价</div>
-        </div>
-        <div class="detail-action">⚠️ 评估风险</div>
-      </div>
-      <div class="detail-item">
-        <div>
-          <div class="detail-name">Lenny Chen</div>
-          <div class="detail-reason">加微3周零互动，再不破冰就凉了</div>
-        </div>
-        <div class="detail-action">破冰话术</div>
-      </div>
+      <div class="detail-item"><div><div class="detail-name">张姐 (Jane)</div><div class="detail-reason">孕晚期，7天没回消息，面料方向还没定</div></div><div class="detail-action">确认面料方向</div></div>
+      <div class="detail-item"><div><div class="detail-name">赵赵</div><div class="detail-reason">挑剔型客户，沉默5天，可能在比价</div></div><div class="detail-action">⚠️ 评估风险</div></div>
+      <div class="detail-item"><div><div class="detail-name">Lenny Chen</div><div class="detail-reason">加微3周零互动，再不破冰就凉了</div></div><div class="detail-action">破冰话术</div></div>
     </div>
   </div>
 
-  <!-- YELLOW: Opportunity -->
   <div class="summary-card yellow" onclick="toggleCard(this)">
     <div class="card-top">
       <span class="card-label">可以推进</span>
@@ -526,45 +235,14 @@
     <div class="card-subtitle">个客户差一步就能往前走</div>
     <div class="card-detail">
       <div class="detail-divider"></div>
-      <div class="detail-item">
-        <div>
-          <div class="detail-name">Lily (加拿大)</div>
-          <div class="detail-reason">购买力OK，卡在海运信任，不是价格</div>
-        </div>
-        <div class="detail-action">解决运输顾虑</div>
-      </div>
-      <div class="detail-item">
-        <div>
-          <div class="detail-name">小米</div>
-          <div class="detail-reason">面料纠结中，对品牌认可度高</div>
-        </div>
-        <div class="detail-action">寄样对比</div>
-      </div>
-      <div class="detail-item">
-        <div>
-          <div class="detail-name">鹏友</div>
-          <div class="detail-reason">需求没锁定，但互动热度在</div>
-        </div>
-        <div class="detail-action">锁定款式</div>
-      </div>
-      <div class="detail-item">
-        <div>
-          <div class="detail-name">lulu</div>
-          <div class="detail-reason">探索阶段，装修时间线未明确</div>
-        </div>
-        <div class="detail-action">问装修进度</div>
-      </div>
-      <div class="detail-item">
-        <div>
-          <div class="detail-name">Sunny Kevin</div>
-          <div class="detail-reason">海外客户，真竞品是淘宝廉价沙发</div>
-        </div>
-        <div class="detail-action">价值感塑造</div>
-      </div>
+      <div class="detail-item"><div><div class="detail-name">Lily (加拿大)</div><div class="detail-reason">购买力OK，卡在海运信任，不是价格</div></div><div class="detail-action">解决运输顾虑</div></div>
+      <div class="detail-item"><div><div class="detail-name">小米</div><div class="detail-reason">面料纠结中，对品牌认可度高</div></div><div class="detail-action">缩小面料范围</div></div>
+      <div class="detail-item"><div><div class="detail-name">鹏友</div><div class="detail-reason">需求没锁定，但互动热度在</div></div><div class="detail-action">锁定款式</div></div>
+      <div class="detail-item"><div><div class="detail-name">lulu</div><div class="detail-reason">探索阶段，装修时间线未明确</div></div><div class="detail-action">问装修进度</div></div>
+      <div class="detail-item"><div><div class="detail-name">Sunny Kevin</div><div class="detail-reason">海外客户，真竞品是淘宝廉价沙发</div></div><div class="detail-action">价值感塑造</div></div>
     </div>
   </div>
 
-  <!-- BLUE: Sales Health -->
   <div class="summary-card blue" onclick="toggleCard(this)">
     <div class="card-top">
       <span class="card-label">销售异常</span>
@@ -574,203 +252,162 @@
     <div class="card-subtitle">个销售需要你关注</div>
     <div class="card-detail">
       <div class="detail-divider"></div>
-      <div class="detail-item">
+      <div class="detail-item"><div><div class="detail-name">可欣</div><div class="detail-reason">客户犹豫后平均72h才跟进，错过最佳窗口</div></div><div class="detail-action">提醒跟进节奏</div></div>
+      <div class="detail-item"><div><div class="detail-name">小杰</div><div class="detail-reason">x970078157判断失误，逛街客户当意向客户跟</div></div><div class="detail-action">教筛选方法</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 1-4: Sales Detail -->
+<div class="section-title">销售跟进状态</div>
+<div class="sales-cards">
+
+  <!-- 可欣 -->
+  <div class="sales-card-wrap" onclick="toggleSalesCard(this)">
+    <div class="sales-card-header">
+      <div class="sales-info">
+        <div class="sales-avatar" style="background:linear-gradient(135deg,#ff6b81,#ff4757);">欣</div>
         <div>
-          <div class="detail-name">可欣</div>
-          <div class="detail-reason">客户犹豫后平均72h才跟进，错过最佳窗口</div>
+          <div class="sales-name">可欣</div>
+          <div class="sales-status">今日 3/8 已跟进</div>
         </div>
-        <div class="detail-action">提醒跟进节奏</div>
       </div>
-      <div class="detail-item">
-        <div>
-          <div class="detail-name">小杰</div>
-          <div class="detail-reason">x970078157判断失误，逛街客户当意向客户跟</div>
+      <div class="sales-metrics">
+        <div class="metric"><div class="metric-value">8</div><div class="metric-label">待跟进</div></div>
+        <div class="metric metric-good"><div class="metric-value">3</div><div class="metric-label">已跟进</div></div>
+        <div class="metric metric-warn"><div class="metric-value">2</div><div class="metric-label">超时</div></div>
+      </div>
+    </div>
+    <div class="card-detail">
+      <div class="sales-detail">
+        <div class="sales-detail-divider"></div>
+        <div class="sales-detail-header">
+          <span class="sales-detail-title">今日客户明细</span>
+          <a href="kexin.html" class="sales-detail-link" onclick="event.stopPropagation();">打开跟进页 →</a>
         </div>
-        <div class="detail-action">教筛选方法</div>
+        <div class="follow-item"><div class="follow-left"><div class="follow-priority s"></div><div><div class="follow-name">张姐 (Jane)</div><div class="follow-time">已跟进 · 14:32</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
+        <div class="follow-item"><div class="follow-left"><div class="follow-priority s"></div><div><div class="follow-name">赵赵</div><div class="follow-time">已跟进 · 15:10</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
+        <div class="follow-item"><div class="follow-left"><div class="follow-priority a"></div><div><div class="follow-name">小米</div><div class="follow-time">已跟进 · 16:45</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
+        <div class="follow-item"><div class="follow-left"><div class="follow-priority a"></div><div><div class="follow-name">鹏友</div></div></div><div class="follow-status status-pending">待跟进</div></div>
+        <div class="follow-item"><div class="follow-left"><div class="follow-priority b"></div><div><div class="follow-name">Lenny Chen</div></div></div><div class="follow-status status-overdue">超时</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 小杰 -->
+  <div class="sales-card-wrap" onclick="toggleSalesCard(this)">
+    <div class="sales-card-header">
+      <div class="sales-info">
+        <div class="sales-avatar" style="background:linear-gradient(135deg,#70a1ff,#3742fa);">杰</div>
+        <div>
+          <div class="sales-name">小杰</div>
+          <div class="sales-status">今日 1/6 已跟进</div>
+        </div>
+      </div>
+      <div class="sales-metrics">
+        <div class="metric"><div class="metric-value">6</div><div class="metric-label">待跟进</div></div>
+        <div class="metric metric-good"><div class="metric-value">1</div><div class="metric-label">已跟进</div></div>
+        <div class="metric metric-warn"><div class="metric-value">1</div><div class="metric-label">超时</div></div>
+      </div>
+    </div>
+    <div class="card-detail">
+      <div class="sales-detail">
+        <div class="sales-detail-divider"></div>
+        <div class="sales-detail-header">
+          <span class="sales-detail-title">今日客户明细</span>
+          <a href="xiaojie.html" class="sales-detail-link" onclick="event.stopPropagation();">打开跟进页 →</a>
+        </div>
+        <div class="follow-item"><div class="follow-left"><div class="follow-priority a"></div><div><div class="follow-name">Lily (加拿大)</div><div class="follow-time">已跟进 · 11:20</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
+        <div class="follow-item"><div class="follow-left"><div class="follow-priority b"></div><div><div class="follow-name">lulu</div></div></div><div class="follow-status status-pending">待跟进</div></div>
+        <div class="follow-item"><div class="follow-left"><div class="follow-priority b"></div><div><div class="follow-name">Sunny Kevin</div></div></div><div class="follow-status status-overdue">超时</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 霄剑 -->
+  <div class="sales-card-wrap" onclick="toggleSalesCard(this)">
+    <div class="sales-card-header">
+      <div class="sales-info">
+        <div class="sales-avatar" style="background:linear-gradient(135deg,#7bed9f,#2ed573);">剑</div>
+        <div>
+          <div class="sales-name">霄剑</div>
+          <div class="sales-status">今日 4/6 已跟进</div>
+        </div>
+      </div>
+      <div class="sales-metrics">
+        <div class="metric"><div class="metric-value">6</div><div class="metric-label">待跟进</div></div>
+        <div class="metric metric-good"><div class="metric-value">4</div><div class="metric-label">已跟进</div></div>
+        <div class="metric"><div class="metric-value">0</div><div class="metric-label">超时</div></div>
+      </div>
+    </div>
+    <div class="card-detail">
+      <div class="sales-detail">
+        <div class="sales-detail-divider"></div>
+        <div class="sales-detail-header">
+          <span class="sales-detail-title">今日客户明细</span>
+          <a href="xiaojian.html" class="sales-detail-link" onclick="event.stopPropagation();">打开跟进页 →</a>
+        </div>
+        <div class="follow-item"><div class="follow-left"><div class="follow-priority s"></div><div><div class="follow-name">王总</div><div class="follow-time">已跟进 · 09:15</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
+        <div class="follow-item"><div class="follow-left"><div class="follow-priority a"></div><div><div class="follow-name">Amy (澳洲)</div><div class="follow-time">已跟进 · 10:30</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
+        <div class="follow-item"><div class="follow-left"><div class="follow-priority a"></div><div><div class="follow-name">大伟</div><div class="follow-time">已跟进 · 13:05</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
+        <div class="follow-item"><div class="follow-left"><div class="follow-priority b"></div><div><div class="follow-name">小周</div><div class="follow-time">已跟进 · 14:50</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
+        <div class="follow-item"><div class="follow-left"><div class="follow-priority b"></div><div><div class="follow-name">陈姐</div></div></div><div class="follow-status status-pending">待跟进</div></div>
       </div>
     </div>
   </div>
 
 </div>
 
-<!-- Sales Overview -->
-<div class="section-title">销售状态</div>
-<div class="sales-cards">
-  <a href="kexin.html" class="sales-card" style="text-decoration:none;color:inherit;">
-    <div class="sales-info">
-      <div class="sales-avatar" style="background: linear-gradient(135deg, #ff6b81, #ff4757);">欣</div>
-      <div>
-        <div class="sales-name">可欣</div>
-        <div class="sales-status">最近跟进: 2小时前</div>
-      </div>
-    </div>
-    <div class="sales-metrics">
-      <div class="metric">
-        <div class="metric-value">12</div>
-        <div class="metric-label">在跟</div>
-      </div>
-      <div class="metric metric-warn">
-        <div class="metric-value">3</div>
-        <div class="metric-label">超时</div>
-      </div>
-    </div>
-  </a>
-
-  <a href="xiaojie.html" class="sales-card" style="text-decoration:none;color:inherit;">
-    <div class="sales-info">
-      <div class="sales-avatar" style="background: linear-gradient(135deg, #70a1ff, #3742fa);">杰</div>
-      <div>
-        <div class="sales-name">小杰</div>
-        <div class="sales-status">最近跟进: 5小时前</div>
-      </div>
-    </div>
-    <div class="sales-metrics">
-      <div class="metric">
-        <div class="metric-value">8</div>
-        <div class="metric-label">在跟</div>
-      </div>
-      <div class="metric metric-warn">
-        <div class="metric-value">1</div>
-        <div class="metric-label">超时</div>
-      </div>
-    </div>
-  </a>
-
-  <a href="xiaojian.html" class="sales-card" style="text-decoration:none;color:inherit;">
-    <div class="sales-info">
-      <div class="sales-avatar" style="background: linear-gradient(135deg, #7bed9f, #2ed573);">剑</div>
-      <div>
-        <div class="sales-name">霄剑</div>
-        <div class="sales-status">最近跟进: 30分钟前</div>
-      </div>
-    </div>
-    <div class="sales-metrics">
-      <div class="metric">
-        <div class="metric-value">10</div>
-        <div class="metric-label">在跟</div>
-      </div>
-      <div class="metric">
-        <div class="metric-value">0</div>
-        <div class="metric-label">超时</div>
-      </div>
-    </div>
-  </a>
-</div>
-
-<!-- Bottom Stats -->
+<!-- Weekly Stats -->
 <div class="section-title">本周概览</div>
 <div class="stats-bar">
-  <div class="stat-chip">
-    <div class="stat-value">30</div>
-    <div class="stat-label">在跟客户</div>
-  </div>
-  <div class="stat-chip">
-    <div class="stat-value">2</div>
-    <div class="stat-label">本周成交</div>
-  </div>
-  <div class="stat-chip">
-    <div class="stat-value">7</div>
-    <div class="stat-label">新加微信</div>
-  </div>
-  <div class="stat-chip">
-    <div class="stat-value">¥38k</div>
-    <div class="stat-label">本周营收</div>
-  </div>
+  <div class="stat-chip"><div class="stat-value">30</div><div class="stat-label">在跟客户</div></div>
+  <div class="stat-chip"><div class="stat-value">2</div><div class="stat-label">本周成交</div></div>
+  <div class="stat-chip"><div class="stat-value">7</div><div class="stat-label">新加微信</div></div>
+  <div class="stat-chip"><div class="stat-value">¥38k</div><div class="stat-label">本周营收</div></div>
 </div>
-</div> <!-- end page-daily -->
+</div>
 
 <!-- PAGE 2: AI Value -->
 <div id="page-value" class="page">
-
-  <!-- Hero number -->
   <div class="value-hero">
     <div class="value-hero-label">AI系统每月预估增量</div>
     <div class="value-hero-number">¥30万</div>
     <div class="value-hero-sub">基于11月367位新客户回溯分析</div>
   </div>
 
-  <!-- The story in 3 cards -->
   <div class="value-card" onclick="toggleCard(this)">
-    <div class="card-top">
-      <span class="card-label">核心发现</span>
-      <span class="card-arrow">›</span>
-    </div>
-    <div class="value-stat">
-      <span class="value-big red-text">224人</span>
-      <span class="value-desc">聊过但没人管，沉默流失</span>
-    </div>
-    <div class="card-detail">
-      <div class="detail-divider"></div>
-      <div class="value-explain">
-        <p>11月367个新客户中，<strong>61%加了微信、聊过几轮就断了</strong>。</p>
-        <p>其中163人聊了10条以上——有需求、有兴趣，但销售没跟住。</p>
-        <p>AI能在客户沉默第3天自动预警，提醒销售跟进。</p>
-      </div>
-    </div>
+    <div class="card-top"><span class="card-label">核心发现</span><span class="card-arrow">›</span></div>
+    <div class="value-stat"><span class="value-big red-text">224人</span><span class="value-desc">聊过但没人管，沉默流失</span></div>
+    <div class="card-detail"><div class="detail-divider"></div><div class="value-explain"><p>11月367个新客户中，<strong>61%加了微信、聊过几轮就断了</strong>。</p><p>其中163人聊了10条以上——有需求、有兴趣，但销售没跟住。</p><p>AI能在客户沉默第3天自动预警，提醒销售跟进。</p></div></div>
   </div>
 
   <div class="value-card" onclick="toggleCard(this)">
-    <div class="card-top">
-      <span class="card-label">转化断崖</span>
-      <span class="card-arrow">›</span>
-    </div>
-    <div class="value-stat">
-      <span class="value-big yellow-text">1.8%→38.9%</span>
-      <span class="value-desc">中互动 vs 深互动转化率</span>
-    </div>
-    <div class="card-detail">
-      <div class="detail-divider"></div>
-      <div class="value-explain">
-        <p>聊10-50条的客户，转化率只有<strong>1.8%</strong>。</p>
-        <p>聊50条以上的客户，转化率飙到<strong>38.9%</strong>。</p>
-        <p>关键不是找更多客户，是<strong>把已经在聊的客户推到深互动</strong>。AI帮销售识别谁卡住了、卡在哪。</p>
-      </div>
-    </div>
+    <div class="card-top"><span class="card-label">转化断崖</span><span class="card-arrow">›</span></div>
+    <div class="value-stat"><span class="value-big yellow-text">1.8%→38.9%</span><span class="value-desc">中互动 vs 深互动转化率</span></div>
+    <div class="card-detail"><div class="detail-divider"></div><div class="value-explain"><p>聊10-50条的客户，转化率只有<strong>1.8%</strong>。</p><p>聊50条以上的客户，转化率飙到<strong>38.9%</strong>。</p><p>关键不是找更多客户，是<strong>把已经在聊的客户推到深互动</strong>。AI帮销售识别谁卡住了、卡在哪。</p></div></div>
   </div>
 
   <div class="value-card" onclick="toggleCard(this)">
-    <div class="card-top">
-      <span class="card-label">怎么算的</span>
-      <span class="card-arrow">›</span>
-    </div>
-    <div class="value-stat">
-      <span class="value-big green-text">16人 × ¥1.8万</span>
-      <span class="value-desc">救回10%沉默客户 × 平均客单价</span>
-    </div>
-    <div class="card-detail">
-      <div class="detail-divider"></div>
-      <div class="value-explain">
-        <p>163个有实质互动但断档的客户，AI预警+跟进提醒。</p>
-        <p>保守假设只救回<strong>10%</strong>（16人）。</p>
-        <p>按平均客单价¥18,497计算 ≈ <strong>¥29.6万/月</strong>。</p>
-        <p style="color:var(--text-dim);margin-top:8px;">这还没算提升销售跟进效率、减少无效客户投入带来的增量。</p>
-      </div>
-    </div>
+    <div class="card-top"><span class="card-label">怎么算的</span><span class="card-arrow">›</span></div>
+    <div class="value-stat"><span class="value-big green-text">16人 × ¥1.8万</span><span class="value-desc">救回10%沉默客户 × 平均客单价</span></div>
+    <div class="card-detail"><div class="detail-divider"></div><div class="value-explain"><p>163个有实质互动但断档的客户，AI预警+跟进提醒。</p><p>保守假设只救回<strong>10%</strong>（16人）。</p><p>按平均客单价¥18,497计算 ≈ <strong>¥29.6万/月</strong>。</p><p style="color:var(--text-dim);margin-top:8px;">这还没算提升销售跟进效率、减少无效客户投入带来的增量。</p></div></div>
   </div>
 
-  <!-- Bottom: current vs projected -->
   <div class="section-title" style="margin-top:28px;">11月实际 vs AI介入预估</div>
   <div class="compare-row">
-    <div class="compare-box">
-      <div class="compare-label">现状</div>
-      <div class="compare-value">¥44万</div>
-      <div class="compare-sub">24人成交 · 6.5%转化率</div>
-    </div>
+    <div class="compare-box"><div class="compare-label">现状</div><div class="compare-value">¥44万</div><div class="compare-sub">24人成交 · 6.5%转化率</div></div>
     <div class="compare-arrow">→</div>
-    <div class="compare-box highlight">
-      <div class="compare-label">AI介入后</div>
-      <div class="compare-value">¥74万</div>
-      <div class="compare-sub">40人成交 · 10.9%转化率</div>
-    </div>
+    <div class="compare-box highlight"><div class="compare-label">AI介入后</div><div class="compare-value">¥74万</div><div class="compare-sub">40人成交 · 10.9%转化率</div></div>
   </div>
-
-</div> <!-- end page-value -->
+</div>
 
 <script>
-function toggleCard(card) {
+function toggleCard(card) { card.classList.toggle('expanded'); }
+function toggleSalesCard(card) {
+  if (event.target.closest('.sales-detail-link')) return;
   card.classList.toggle('expanded');
 }
-
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -782,13 +419,10 @@ function switchTab(tab) {
     document.getElementById('page-value').classList.add('active');
   }
 }
-
 const now = new Date();
 const months = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 const days = ['周日','周一','周二','周三','周四','周五','周六'];
-document.querySelector('.date').textContent = 
-  `${months[now.getMonth()]}月${now.getDate()}日 ${days[now.getDay()]}`;
+document.querySelector('.date').textContent = `${months[now.getMonth()]}月${now.getDate()}日 ${days[now.getDay()]}`;
 </script>
-
 </body>
 </html>
