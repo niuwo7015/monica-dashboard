@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>莫妮卡摩卡 · 今日看板</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --card-bg: #1a1a1a;
+    --card-hover: #222;
+    --red: #ff4757;
+    --red-bg: rgba(255,71,87,0.08);
+    --red-glow: rgba(255,71,87,0.15);
+    --yellow: #ffa502;
+    --yellow-bg: rgba(255,165,2,0.08);
+    --yellow-glow: rgba(255,165,2,0.15);
+    --blue: #3742fa;
+    --blue-bg: rgba(55,66,250,0.08);
+    --blue-glow: rgba(55,66,250,0.15);
+    --green: #2ed573;
+    --green-bg: rgba(46,213,115,0.08);
+    --text: #f1f1f1;
+    --text-dim: #888;
+    --text-mid: #bbb;
+    --radius: 16px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px 16px 40px;
+    max-width: 480px;
+    margin: 0 auto;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+    padding: 0 4px;
+  }
+  .header-left h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+  .header-left .date {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--green-bg);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--green);
+    font-weight: 500;
+  }
+
+  /* Summary Cards - The 3-second layer */
+  .summary-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .summary-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    position: relative;
+    overflow: hidden;
+  }
+  .summary-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px;
+    height: 100%;
+    border-radius: 4px 0 0 4px;
+  }
+  .summary-card.red::before { background: var(--red); }
+  .summary-card.red { border-color: rgba(255,71,87,0.12); background: linear-gradient(135deg, var(--red-bg), var(--card-bg)); }
+  .summary-card.yellow::before { background: var(--yellow); }
+  .summary-card.yellow { border-color: rgba(255,165,2,0.12); background: linear-gradient(135deg, var(--yellow-bg), var(--card-bg)); }
+  .summary-card.blue::before { background: var(--blue); }
+  .summary-card.blue { border-color: rgba(55,66,250,0.12); background: linear-gradient(135deg, var(--blue-bg), var(--card-bg)); }
+
+  .summary-card:active { transform: scale(0.98); }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .card-label {
+    font-size: 14px;
+    color: var(--text-mid);
+    font-weight: 400;
+  }
+  .card-arrow {
+    font-size: 18px;
+    color: var(--text-dim);
+    transition: transform 0.3s ease;
+  }
+  .summary-card.expanded .card-arrow {
+    transform: rotate(90deg);
+  }
+  .card-number {
+    font-size: 42px;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 4px;
+    letter-spacing: -2px;
+  }
+  .summary-card.red .card-number { color: var(--red); }
+  .summary-card.yellow .card-number { color: var(--yellow); }
+  .summary-card.blue .card-number { color: var(--blue); }
+
+  .card-subtitle {
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  /* Expandable Detail Layer */
+  .card-detail {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, opacity 0.3s ease;
+    opacity: 0;
+  }
+  .summary-card.expanded .card-detail {
+    max-height: 600px;
+    opacity: 1;
+  }
+  .detail-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 16px 0;
+  }
+  .detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .detail-item:last-child { border-bottom: none; }
+  .detail-name {
+    font-size: 15px;
+    font-weight: 500;
+    margin-bottom: 3px;
+  }
+  .detail-reason {
+    font-size: 12px;
+    color: var(--text-dim);
+    max-width: 220px;
+  }
+  .detail-action {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    white-space: nowrap;
+    font-weight: 500;
+    flex-shrink: 0;
+    margin-left: 12px;
+    align-self: center;
+  }
+  .red .detail-action {
+    background: var(--red-bg);
+    color: var(--red);
+    border: 1px solid rgba(255,71,87,0.2);
+  }
+  .yellow .detail-action {
+    background: var(--yellow-bg);
+    color: var(--yellow);
+    border: 1px solid rgba(255,165,2,0.2);
+  }
+
+  /* Sales Section */
+  .section-title {
+    font-size: 13px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 14px;
+    padding-left: 4px;
+  }
+
+  .sales-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+
+  .sales-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .sales-card:active { transform: scale(0.98); }
+
+  .sales-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .sales-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .sales-name {
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .sales-status {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 1px;
+  }
+  .sales-metrics {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  .metric {
+    text-align: center;
+  }
+  .metric-value {
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .metric-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 1px;
+  }
+  .metric-warn .metric-value { color: var(--red); }
+
+  /* Quick Stats Bar */
+  .stats-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+  .stat-chip {
+    flex: 1;
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 14px 12px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .stat-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .summary-card:nth-child(1) { animation: fadeUp 0.5s ease 0.05s both; }
+  .summary-card:nth-child(2) { animation: fadeUp 0.5s ease 0.15s both; }
+  .summary-card:nth-child(3) { animation: fadeUp 0.5s ease 0.25s both; }
+  .section-title { animation: fadeUp 0.5s ease 0.3s both; }
+  .sales-card:nth-child(1) { animation: fadeUp 0.5s ease 0.35s both; }
+  .sales-card:nth-child(2) { animation: fadeUp 0.5s ease 0.4s both; }
+  .sales-card:nth-child(3) { animation: fadeUp 0.5s ease 0.45s both; }
+  .stats-bar { animation: fadeUp 0.5s ease 0.5s both; }
+
+  /* Pulse for urgent */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+  .urgent-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--red);
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 2s ease-in-out infinite;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  /* Tab Navigation */
+  .tab-nav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 4px;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .tab.active {
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+  }
+
+  /* Page switching */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Value page styles */
+  .value-hero {
+    text-align: center;
+    padding: 32px 20px;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, rgba(46,213,115,0.06), rgba(55,66,250,0.06));
+    border-radius: var(--radius);
+    border: 1px solid rgba(46,213,115,0.1);
+  }
+  .value-hero-label {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .value-hero-number {
+    font-size: 56px;
+    font-weight: 900;
+    color: var(--green);
+    letter-spacing: -3px;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .value-hero-sub {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .value-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.04);
+    overflow: hidden;
+  }
+  .value-card:active { transform: scale(0.98); }
+  .value-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .value-big {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: -1px;
+  }
+  .red-text { color: var(--red); }
+  .yellow-text { color: var(--yellow); }
+  .green-text { color: var(--green); }
+  .value-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .value-explain {
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text-mid);
+  }
+  .value-explain p { margin-bottom: 8px; }
+  .value-explain strong { color: var(--text); font-weight: 600; }
+
+  /* Compare row */
+  .compare-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+  .compare-box {
+    flex: 1;
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 18px 14px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .compare-box.highlight {
+    border-color: rgba(46,213,115,0.2);
+    background: linear-gradient(135deg, var(--green-bg), var(--card-bg));
+  }
+  .compare-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .compare-value {
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: -1px;
+  }
+  .compare-box.highlight .compare-value { color: var(--green); }
+  .compare-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  .compare-arrow {
+    font-size: 20px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>莫妮卡摩卡</h1>
+    <div class="date">3月1日 周六</div>
+  </div>
+  <div class="header-right">
+    <span>●</span> 系统正常
+  </div>
+</div>
+
+<!-- Tab Navigation -->
+<div class="tab-nav">
+  <div class="tab active" onclick="switchTab('daily')">今日看板</div>
+  <div class="tab" onclick="switchTab('value')">AI价值测算</div>
+</div>
+
+<!-- PAGE 1: Daily Dashboard -->
+<div id="page-daily" class="page active">
+
+<!-- 3-second layer: Three cards -->
+<div class="summary-grid">
+
+  <!-- RED: Urgent -->
+  <div class="summary-card red" onclick="toggleCard(this)">
+    <div class="card-top">
+      <span class="card-label"><span class="urgent-dot"></span>即将流失</span>
+      <span class="card-arrow">›</span>
+    </div>
+    <div class="card-number">3</div>
+    <div class="card-subtitle">个客户需要立刻处理</div>
+    <div class="card-detail">
+      <div class="detail-divider"></div>
+      <div class="detail-item">
+        <div>
+          <div class="detail-name">张姐 (Jane)</div>
+          <div class="detail-reason">孕晚期，7天没回消息，面料方向还没定</div>
+        </div>
+        <div class="detail-action">确认面料方向</div>
+      </div>
+      <div class="detail-item">
+        <div>
+          <div class="detail-name">赵赵</div>
+          <div class="detail-reason">挑剔型客户，沉默5天，可能在比价</div>
+        </div>
+        <div class="detail-action">⚠️ 评估风险</div>
+      </div>
+      <div class="detail-item">
+        <div>
+          <div class="detail-name">Lenny Chen</div>
+          <div class="detail-reason">加微3周零互动，再不破冰就凉了</div>
+        </div>
+        <div class="detail-action">破冰话术</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- YELLOW: Opportunity -->
+  <div class="summary-card yellow" onclick="toggleCard(this)">
+    <div class="card-top">
+      <span class="card-label">可以推进</span>
+      <span class="card-arrow">›</span>
+    </div>
+    <div class="card-number">5</div>
+    <div class="card-subtitle">个客户差一步就能往前走</div>
+    <div class="card-detail">
+      <div class="detail-divider"></div>
+      <div class="detail-item">
+        <div>
+          <div class="detail-name">Lily (加拿大)</div>
+          <div class="detail-reason">购买力OK，卡在海运信任，不是价格</div>
+        </div>
+        <div class="detail-action">解决运输顾虑</div>
+      </div>
+      <div class="detail-item">
+        <div>
+          <div class="detail-name">小米</div>
+          <div class="detail-reason">面料纠结中，对品牌认可度高</div>
+        </div>
+        <div class="detail-action">寄样对比</div>
+      </div>
+      <div class="detail-item">
+        <div>
+          <div class="detail-name">鹏友</div>
+          <div class="detail-reason">需求没锁定，但互动热度在</div>
+        </div>
+        <div class="detail-action">锁定款式</div>
+      </div>
+      <div class="detail-item">
+        <div>
+          <div class="detail-name">lulu</div>
+          <div class="detail-reason">探索阶段，装修时间线未明确</div>
+        </div>
+        <div class="detail-action">问装修进度</div>
+      </div>
+      <div class="detail-item">
+        <div>
+          <div class="detail-name">Sunny Kevin</div>
+          <div class="detail-reason">海外客户，真竞品是淘宝廉价沙发</div>
+        </div>
+        <div class="detail-action">价值感塑造</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BLUE: Sales Health -->
+  <div class="summary-card blue" onclick="toggleCard(this)">
+    <div class="card-top">
+      <span class="card-label">销售异常</span>
+      <span class="card-arrow">›</span>
+    </div>
+    <div class="card-number">2</div>
+    <div class="card-subtitle">个销售需要你关注</div>
+    <div class="card-detail">
+      <div class="detail-divider"></div>
+      <div class="detail-item">
+        <div>
+          <div class="detail-name">可欣</div>
+          <div class="detail-reason">客户犹豫后平均72h才跟进，错过最佳窗口</div>
+        </div>
+        <div class="detail-action">提醒跟进节奏</div>
+      </div>
+      <div class="detail-item">
+        <div>
+          <div class="detail-name">小杰</div>
+          <div class="detail-reason">x970078157判断失误，逛街客户当意向客户跟</div>
+        </div>
+        <div class="detail-action">教筛选方法</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Sales Overview -->
+<div class="section-title">销售状态</div>
+<div class="sales-cards">
+  <div class="sales-card">
+    <div class="sales-info">
+      <div class="sales-avatar" style="background: linear-gradient(135deg, #ff6b81, #ff4757);">欣</div>
+      <div>
+        <div class="sales-name">可欣</div>
+        <div class="sales-status">最近跟进: 2小时前</div>
+      </div>
+    </div>
+    <div class="sales-metrics">
+      <div class="metric">
+        <div class="metric-value">12</div>
+        <div class="metric-label">在跟</div>
+      </div>
+      <div class="metric metric-warn">
+        <div class="metric-value">3</div>
+        <div class="metric-label">超时</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sales-card">
+    <div class="sales-info">
+      <div class="sales-avatar" style="background: linear-gradient(135deg, #70a1ff, #3742fa);">杰</div>
+      <div>
+        <div class="sales-name">小杰</div>
+        <div class="sales-status">最近跟进: 5小时前</div>
+      </div>
+    </div>
+    <div class="sales-metrics">
+      <div class="metric">
+        <div class="metric-value">8</div>
+        <div class="metric-label">在跟</div>
+      </div>
+      <div class="metric metric-warn">
+        <div class="metric-value">1</div>
+        <div class="metric-label">超时</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sales-card">
+    <div class="sales-info">
+      <div class="sales-avatar" style="background: linear-gradient(135deg, #7bed9f, #2ed573);">剑</div>
+      <div>
+        <div class="sales-name">霄剑</div>
+        <div class="sales-status">最近跟进: 30分钟前</div>
+      </div>
+    </div>
+    <div class="sales-metrics">
+      <div class="metric">
+        <div class="metric-value">10</div>
+        <div class="metric-label">在跟</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value">0</div>
+        <div class="metric-label">超时</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Stats -->
+<div class="section-title">本周概览</div>
+<div class="stats-bar">
+  <div class="stat-chip">
+    <div class="stat-value">30</div>
+    <div class="stat-label">在跟客户</div>
+  </div>
+  <div class="stat-chip">
+    <div class="stat-value">2</div>
+    <div class="stat-label">本周成交</div>
+  </div>
+  <div class="stat-chip">
+    <div class="stat-value">7</div>
+    <div class="stat-label">新加微信</div>
+  </div>
+  <div class="stat-chip">
+    <div class="stat-value">¥38k</div>
+    <div class="stat-label">本周营收</div>
+  </div>
+</div>
+</div> <!-- end page-daily -->
+
+<!-- PAGE 2: AI Value -->
+<div id="page-value" class="page">
+
+  <!-- Hero number -->
+  <div class="value-hero">
+    <div class="value-hero-label">AI系统每月预估增量</div>
+    <div class="value-hero-number">¥30万</div>
+    <div class="value-hero-sub">基于11月367位新客户回溯分析</div>
+  </div>
+
+  <!-- The story in 3 cards -->
+  <div class="value-card" onclick="toggleCard(this)">
+    <div class="card-top">
+      <span class="card-label">核心发现</span>
+      <span class="card-arrow">›</span>
+    </div>
+    <div class="value-stat">
+      <span class="value-big red-text">224人</span>
+      <span class="value-desc">聊过但没人管，沉默流失</span>
+    </div>
+    <div class="card-detail">
+      <div class="detail-divider"></div>
+      <div class="value-explain">
+        <p>11月367个新客户中，<strong>61%加了微信、聊过几轮就断了</strong>。</p>
+        <p>其中163人聊了10条以上——有需求、有兴趣，但销售没跟住。</p>
+        <p>AI能在客户沉默第3天自动预警，提醒销售跟进。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="value-card" onclick="toggleCard(this)">
+    <div class="card-top">
+      <span class="card-label">转化断崖</span>
+      <span class="card-arrow">›</span>
+    </div>
+    <div class="value-stat">
+      <span class="value-big yellow-text">1.8%→38.9%</span>
+      <span class="value-desc">中互动 vs 深互动转化率</span>
+    </div>
+    <div class="card-detail">
+      <div class="detail-divider"></div>
+      <div class="value-explain">
+        <p>聊10-50条的客户，转化率只有<strong>1.8%</strong>。</p>
+        <p>聊50条以上的客户，转化率飙到<strong>38.9%</strong>。</p>
+        <p>关键不是找更多客户，是<strong>把已经在聊的客户推到深互动</strong>。AI帮销售识别谁卡住了、卡在哪。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="value-card" onclick="toggleCard(this)">
+    <div class="card-top">
+      <span class="card-label">怎么算的</span>
+      <span class="card-arrow">›</span>
+    </div>
+    <div class="value-stat">
+      <span class="value-big green-text">16人 × ¥1.8万</span>
+      <span class="value-desc">救回10%沉默客户 × 平均客单价</span>
+    </div>
+    <div class="card-detail">
+      <div class="detail-divider"></div>
+      <div class="value-explain">
+        <p>163个有实质互动但断档的客户，AI预警+跟进提醒。</p>
+        <p>保守假设只救回<strong>10%</strong>（16人）。</p>
+        <p>按平均客单价¥18,497计算 ≈ <strong>¥29.6万/月</strong>。</p>
+        <p style="color:var(--text-dim);margin-top:8px;">这还没算提升销售跟进效率、减少无效客户投入带来的增量。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom: current vs projected -->
+  <div class="section-title" style="margin-top:28px;">11月实际 vs AI介入预估</div>
+  <div class="compare-row">
+    <div class="compare-box">
+      <div class="compare-label">现状</div>
+      <div class="compare-value">¥44万</div>
+      <div class="compare-sub">24人成交 · 6.5%转化率</div>
+    </div>
+    <div class="compare-arrow">→</div>
+    <div class="compare-box highlight">
+      <div class="compare-label">AI介入后</div>
+      <div class="compare-value">¥74万</div>
+      <div class="compare-sub">40人成交 · 10.9%转化率</div>
+    </div>
+  </div>
+
+</div> <!-- end page-value -->
+
+<script>
+function toggleCard(card) {
+  card.classList.toggle('expanded');
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  if (tab === 'daily') {
+    document.querySelector('.tab:first-child').classList.add('active');
+    document.getElementById('page-daily').classList.add('active');
+  } else {
+    document.querySelector('.tab:last-child').classList.add('active');
+    document.getElementById('page-value').classList.add('active');
+  }
+}
+
+const now = new Date();
+const months = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+const days = ['周日','周一','周二','周三','周四','周五','周六'];
+document.querySelector('.date').textContent = 
+  `${months[now.getMonth()]}月${now.getDate()}日 ${days[now.getDay()]}`;
+</script>
+
+</body>
+</html>
