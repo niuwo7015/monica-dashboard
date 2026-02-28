@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>莫妮卡摩卡 · 今日看板</title>
+<title>莫妮卡摩卡 · Monica看板</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
+
   :root {
     --bg: #0f0f0f;
     --card-bg: #1a1a1a;
@@ -169,260 +170,137 @@
   .compare-box.highlight .compare-value { color:var(--green); }
   .compare-sub { font-size:11px; color:var(--text-dim); margin-top:4px; }
   .compare-arrow { font-size:20px; color:var(--text-dim); flex-shrink:0; }
+
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="header-left">
-    <h1>莫妮卡摩卡</h1>
-    <div class="date">3月1日 周六</div>
-  </div>
-  <div class="header-right"><span>●</span> 系统正常</div>
+  <h1>Monica 看板</h1>
+  <span class="badge">149 个客户</span>
 </div>
 
-<div class="tab-nav">
-  <div class="tab active" onclick="switchTab('daily')">今日看板</div>
-  <div class="tab" onclick="switchTab('value')">AI价值测算</div>
-</div>
-
-<!-- PAGE 1 -->
-<div id="page-daily" class="page active">
-
-<!-- 5-7: Today Summary -->
 <div class="today-summary">
-  <div class="today-chip">
-    <div class="today-chip-value">20</div>
-    <div class="today-chip-label">今日待跟进</div>
-  </div>
-  <div class="today-chip good">
-    <div class="today-chip-value">8</div>
-    <div class="today-chip-label">已完成</div>
-  </div>
-  <div class="today-chip warn">
-    <div class="today-chip-value">3</div>
-    <div class="today-chip-label">超时未跟</div>
-  </div>
-  <div class="today-chip alert">
-    <div class="today-chip-value">3</div>
-    <div class="today-chip-label">流失预警</div>
-  </div>
+  <div class="today-chip">今日待跟进 <b>148</b></div>
+  <div class="today-chip" style="color:var(--green);">已完成 <b>0</b></div>
+  <div class="today-chip" style="color:var(--red);">流失风险 <b>122</b></div>
+  <div class="today-chip" style="color:var(--yellow);">紧急 <b>6</b></div>
 </div>
 
-<!-- 3-second layer -->
-<div class="summary-grid">
-  <div class="summary-card red" onclick="toggleCard(this)">
-    <div class="card-top">
-      <span class="card-label"><span class="urgent-dot"></span>即将流失</span>
-      <span class="card-arrow">›</span>
-    </div>
-    <div class="card-number">3</div>
-    <div class="card-subtitle">个客户需要立刻处理</div>
-    <div class="card-detail">
-      <div class="detail-divider"></div>
-      <div class="detail-item"><div><div class="detail-name">张姐 (Jane)</div><div class="detail-reason">孕晚期，7天没回消息，面料方向还没定</div></div><div class="detail-action">确认面料方向</div></div>
-      <div class="detail-item"><div><div class="detail-name">赵赵</div><div class="detail-reason">挑剔型客户，沉默5天，可能在比价</div></div><div class="detail-action">⚠️ 评估风险</div></div>
-      <div class="detail-item"><div><div class="detail-name">Lenny Chen</div><div class="detail-reason">加微3周零互动，再不破冰就凉了</div></div><div class="detail-action">破冰话术</div></div>
-    </div>
-  </div>
+<div class="section-title">销售团队</div>
 
-  <div class="summary-card yellow" onclick="toggleCard(this)">
-    <div class="card-top">
-      <span class="card-label">可以推进</span>
-      <span class="card-arrow">›</span>
-    </div>
-    <div class="card-number">5</div>
-    <div class="card-subtitle">个客户差一步就能往前走</div>
-    <div class="card-detail">
-      <div class="detail-divider"></div>
-      <div class="detail-item"><div><div class="detail-name">Lily (加拿大)</div><div class="detail-reason">购买力OK，卡在海运信任，不是价格</div></div><div class="detail-action">解决运输顾虑</div></div>
-      <div class="detail-item"><div><div class="detail-name">小米</div><div class="detail-reason">面料纠结中，对品牌认可度高</div></div><div class="detail-action">缩小面料范围</div></div>
-      <div class="detail-item"><div><div class="detail-name">鹏友</div><div class="detail-reason">需求没锁定，但互动热度在</div></div><div class="detail-action">锁定款式</div></div>
-      <div class="detail-item"><div><div class="detail-name">lulu</div><div class="detail-reason">探索阶段，装修时间线未明确</div></div><div class="detail-action">问装修进度</div></div>
-      <div class="detail-item"><div><div class="detail-name">Sunny Kevin</div><div class="detail-reason">海外客户，真竞品是淘宝廉价沙发</div></div><div class="detail-action">价值感塑造</div></div>
-    </div>
-  </div>
-
-  <div class="summary-card blue" onclick="toggleCard(this)">
-    <div class="card-top">
-      <span class="card-label">销售异常</span>
-      <span class="card-arrow">›</span>
-    </div>
-    <div class="card-number">2</div>
-    <div class="card-subtitle">个销售需要你关注</div>
-    <div class="card-detail">
-      <div class="detail-divider"></div>
-      <div class="detail-item"><div><div class="detail-name">可欣</div><div class="detail-reason">客户犹豫后平均72h才跟进，错过最佳窗口</div></div><div class="detail-action">提醒跟进节奏</div></div>
-      <div class="detail-item"><div><div class="detail-name">小杰</div><div class="detail-reason">x970078157判断失误，逛街客户当意向客户跟</div></div><div class="detail-action">教筛选方法</div></div>
-    </div>
-  </div>
-</div>
-
-<!-- 1-4: Sales Detail -->
-<div class="section-title">销售跟进状态</div>
-<div class="sales-cards">
-
-  <!-- 可欣 -->
-  <div class="sales-card-wrap" onclick="toggleSalesCard(this)">
-    <div class="sales-card-header">
-      <div class="sales-info">
-        <div class="sales-avatar" style="background:linear-gradient(135deg,#ff6b81,#ff4757);">欣</div>
-        <div>
+<div class="sales-card-wrap" onclick="toggleSalesCard(this)">
+        <div class="sales-card">
           <div class="sales-name">可欣</div>
-          <div class="sales-status">今日 3/8 已跟进</div>
+          <div class="sales-stat">
+            <span>今日 <b>0/62</b> 已跟进</span>
+          </div>
+          <div class="sales-tags">
+            <span class="mini-tag" style="color:var(--text-dim);">待跟进 62</span>
+            <span class="mini-tag" style="color:var(--green);">已跟进 0</span>
+            <span class="mini-tag" style="color:var(--red);">流失风险 51</span>
+          </div>
+          <div class="sales-detail">
+            <div class="detail-divider"></div>
+            <div class="follow-item">
+              <span class="follow-priority a"></span>
+              <span class="follow-name">kmj198442</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div><div class="follow-item">
+              <span class="follow-priority b"></span>
+              <span class="follow-name">Ysh18522201294</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div><div class="follow-item">
+              <span class="follow-priority s"></span>
+              <span class="follow-name">jing-ying-lin</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div><div class="follow-item">
+              <span class="follow-priority a"></span>
+              <span class="follow-name">kkaaxxhh</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div><div class="follow-item">
+              <span class="follow-priority a"></span>
+              <span class="follow-name">cc077z</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div>
+            <a href="kexin.html" class="open-link">打开跟进页 →</a>
+          </div>
         </div>
-      </div>
-      <div class="sales-metrics">
-        <div class="metric"><div class="metric-value">8</div><div class="metric-label">待跟进</div></div>
-        <div class="metric metric-good"><div class="metric-value">3</div><div class="metric-label">已跟进</div></div>
-        <div class="metric metric-warn"><div class="metric-value">2</div><div class="metric-label">超时</div></div>
-      </div>
-    </div>
-    <div class="card-detail">
-      <div class="sales-detail">
-        <div class="sales-detail-divider"></div>
-        <div class="sales-detail-header">
-          <span class="sales-detail-title">今日客户明细</span>
-          <a href="kexin.html" class="sales-detail-link" onclick="event.stopPropagation();">打开跟进页 →</a>
-        </div>
-        <div class="follow-item"><div class="follow-left"><div class="follow-priority s"></div><div><div class="follow-name">张姐 (Jane)</div><div class="follow-time">已跟进 · 14:32</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
-        <div class="follow-item"><div class="follow-left"><div class="follow-priority s"></div><div><div class="follow-name">赵赵</div><div class="follow-time">已跟进 · 15:10</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
-        <div class="follow-item"><div class="follow-left"><div class="follow-priority a"></div><div><div class="follow-name">小米</div><div class="follow-time">已跟进 · 16:45</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
-        <div class="follow-item"><div class="follow-left"><div class="follow-priority a"></div><div><div class="follow-name">鹏友</div></div></div><div class="follow-status status-pending">待跟进</div></div>
-        <div class="follow-item"><div class="follow-left"><div class="follow-priority b"></div><div><div class="follow-name">Lenny Chen</div></div></div><div class="follow-status status-overdue">超时</div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 小杰 -->
-  <div class="sales-card-wrap" onclick="toggleSalesCard(this)">
-    <div class="sales-card-header">
-      <div class="sales-info">
-        <div class="sales-avatar" style="background:linear-gradient(135deg,#70a1ff,#3742fa);">杰</div>
-        <div>
+      </div><div class="sales-card-wrap" onclick="toggleSalesCard(this)">
+        <div class="sales-card">
           <div class="sales-name">小杰</div>
-          <div class="sales-status">今日 1/6 已跟进</div>
+          <div class="sales-stat">
+            <span>今日 <b>0/53</b> 已跟进</span>
+          </div>
+          <div class="sales-tags">
+            <span class="mini-tag" style="color:var(--text-dim);">待跟进 53</span>
+            <span class="mini-tag" style="color:var(--green);">已跟进 0</span>
+            <span class="mini-tag" style="color:var(--red);">流失风险 34</span>
+          </div>
+          <div class="sales-detail">
+            <div class="detail-divider"></div>
+            <div class="follow-item">
+              <span class="follow-priority s"></span>
+              <span class="follow-name">shasha6207</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div><div class="follow-item">
+              <span class="follow-priority b"></span>
+              <span class="follow-name">putianjia88</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div><div class="follow-item">
+              <span class="follow-priority a"></span>
+              <span class="follow-name">-yunerr</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div><div class="follow-item">
+              <span class="follow-priority a"></span>
+              <span class="follow-name">DearSea521</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div><div class="follow-item">
+              <span class="follow-priority a"></span>
+              <span class="follow-name">zhuoty77</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div>
+            <a href="xiaojie.html" class="open-link">打开跟进页 →</a>
+          </div>
         </div>
-      </div>
-      <div class="sales-metrics">
-        <div class="metric"><div class="metric-value">6</div><div class="metric-label">待跟进</div></div>
-        <div class="metric metric-good"><div class="metric-value">1</div><div class="metric-label">已跟进</div></div>
-        <div class="metric metric-warn"><div class="metric-value">1</div><div class="metric-label">超时</div></div>
-      </div>
-    </div>
-    <div class="card-detail">
-      <div class="sales-detail">
-        <div class="sales-detail-divider"></div>
-        <div class="sales-detail-header">
-          <span class="sales-detail-title">今日客户明细</span>
-          <a href="xiaojie.html" class="sales-detail-link" onclick="event.stopPropagation();">打开跟进页 →</a>
-        </div>
-        <div class="follow-item"><div class="follow-left"><div class="follow-priority a"></div><div><div class="follow-name">Lily (加拿大)</div><div class="follow-time">已跟进 · 11:20</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
-        <div class="follow-item"><div class="follow-left"><div class="follow-priority b"></div><div><div class="follow-name">lulu</div></div></div><div class="follow-status status-pending">待跟进</div></div>
-        <div class="follow-item"><div class="follow-left"><div class="follow-priority b"></div><div><div class="follow-name">Sunny Kevin</div></div></div><div class="follow-status status-overdue">超时</div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 霄剑 -->
-  <div class="sales-card-wrap" onclick="toggleSalesCard(this)">
-    <div class="sales-card-header">
-      <div class="sales-info">
-        <div class="sales-avatar" style="background:linear-gradient(135deg,#7bed9f,#2ed573);">剑</div>
-        <div>
+      </div><div class="sales-card-wrap" onclick="toggleSalesCard(this)">
+        <div class="sales-card">
           <div class="sales-name">霄剑</div>
-          <div class="sales-status">今日 4/6 已跟进</div>
+          <div class="sales-stat">
+            <span>今日 <b>0/34</b> 已跟进</span>
+          </div>
+          <div class="sales-tags">
+            <span class="mini-tag" style="color:var(--text-dim);">待跟进 34</span>
+            <span class="mini-tag" style="color:var(--green);">已跟进 0</span>
+            <span class="mini-tag" style="color:var(--red);">流失风险 25</span>
+          </div>
+          <div class="sales-detail">
+            <div class="detail-divider"></div>
+            <div class="follow-item">
+              <span class="follow-priority b"></span>
+              <span class="follow-name">baby804804</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div><div class="follow-item">
+              <span class="follow-priority b"></span>
+              <span class="follow-name">xuxinming198229</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div><div class="follow-item">
+              <span class="follow-priority s"></span>
+              <span class="follow-name">eileenongg__</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div><div class="follow-item">
+              <span class="follow-priority a"></span>
+              <span class="follow-name">fmqdtonz</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div><div class="follow-item">
+              <span class="follow-priority a"></span>
+              <span class="follow-name">IIIH77</span>
+              <span class="follow-status status-pending">待跟进</span>
+            </div>
+            <a href="xiaojian.html" class="open-link">打开跟进页 →</a>
+          </div>
         </div>
       </div>
-      <div class="sales-metrics">
-        <div class="metric"><div class="metric-value">6</div><div class="metric-label">待跟进</div></div>
-        <div class="metric metric-good"><div class="metric-value">4</div><div class="metric-label">已跟进</div></div>
-        <div class="metric"><div class="metric-value">0</div><div class="metric-label">超时</div></div>
-      </div>
-    </div>
-    <div class="card-detail">
-      <div class="sales-detail">
-        <div class="sales-detail-divider"></div>
-        <div class="sales-detail-header">
-          <span class="sales-detail-title">今日客户明细</span>
-          <a href="xiaojian.html" class="sales-detail-link" onclick="event.stopPropagation();">打开跟进页 →</a>
-        </div>
-        <div class="follow-item"><div class="follow-left"><div class="follow-priority s"></div><div><div class="follow-name">王总</div><div class="follow-time">已跟进 · 09:15</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
-        <div class="follow-item"><div class="follow-left"><div class="follow-priority a"></div><div><div class="follow-name">Amy (澳洲)</div><div class="follow-time">已跟进 · 10:30</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
-        <div class="follow-item"><div class="follow-left"><div class="follow-priority a"></div><div><div class="follow-name">大伟</div><div class="follow-time">已跟进 · 13:05</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
-        <div class="follow-item"><div class="follow-left"><div class="follow-priority b"></div><div><div class="follow-name">小周</div><div class="follow-time">已跟进 · 14:50</div></div></div><div class="follow-status status-done">✓ 已跟进</div></div>
-        <div class="follow-item"><div class="follow-left"><div class="follow-priority b"></div><div><div class="follow-name">陈姐</div></div></div><div class="follow-status status-pending">待跟进</div></div>
-      </div>
-    </div>
-  </div>
 
-</div>
-
-<!-- Weekly Stats -->
-<div class="section-title">本周概览</div>
-<div class="stats-bar">
-  <div class="stat-chip"><div class="stat-value">30</div><div class="stat-label">在跟客户</div></div>
-  <div class="stat-chip"><div class="stat-value">2</div><div class="stat-label">本周成交</div></div>
-  <div class="stat-chip"><div class="stat-value">7</div><div class="stat-label">新加微信</div></div>
-  <div class="stat-chip"><div class="stat-value">¥38k</div><div class="stat-label">本周营收</div></div>
-</div>
-</div>
-
-<!-- PAGE 2: AI Value -->
-<div id="page-value" class="page">
-  <div class="value-hero">
-    <div class="value-hero-label">AI系统每月预估增量</div>
-    <div class="value-hero-number">¥30万</div>
-    <div class="value-hero-sub">基于11月367位新客户回溯分析</div>
-  </div>
-
-  <div class="value-card" onclick="toggleCard(this)">
-    <div class="card-top"><span class="card-label">核心发现</span><span class="card-arrow">›</span></div>
-    <div class="value-stat"><span class="value-big red-text">224人</span><span class="value-desc">聊过但没人管，沉默流失</span></div>
-    <div class="card-detail"><div class="detail-divider"></div><div class="value-explain"><p>11月367个新客户中，<strong>61%加了微信、聊过几轮就断了</strong>。</p><p>其中163人聊了10条以上——有需求、有兴趣，但销售没跟住。</p><p>AI能在客户沉默第3天自动预警，提醒销售跟进。</p></div></div>
-  </div>
-
-  <div class="value-card" onclick="toggleCard(this)">
-    <div class="card-top"><span class="card-label">转化断崖</span><span class="card-arrow">›</span></div>
-    <div class="value-stat"><span class="value-big yellow-text">1.8%→38.9%</span><span class="value-desc">中互动 vs 深互动转化率</span></div>
-    <div class="card-detail"><div class="detail-divider"></div><div class="value-explain"><p>聊10-50条的客户，转化率只有<strong>1.8%</strong>。</p><p>聊50条以上的客户，转化率飙到<strong>38.9%</strong>。</p><p>关键不是找更多客户，是<strong>把已经在聊的客户推到深互动</strong>。AI帮销售识别谁卡住了、卡在哪。</p></div></div>
-  </div>
-
-  <div class="value-card" onclick="toggleCard(this)">
-    <div class="card-top"><span class="card-label">怎么算的</span><span class="card-arrow">›</span></div>
-    <div class="value-stat"><span class="value-big green-text">16人 × ¥1.8万</span><span class="value-desc">救回10%沉默客户 × 平均客单价</span></div>
-    <div class="card-detail"><div class="detail-divider"></div><div class="value-explain"><p>163个有实质互动但断档的客户，AI预警+跟进提醒。</p><p>保守假设只救回<strong>10%</strong>（16人）。</p><p>按平均客单价¥18,497计算 ≈ <strong>¥29.6万/月</strong>。</p><p style="color:var(--text-dim);margin-top:8px;">这还没算提升销售跟进效率、减少无效客户投入带来的增量。</p></div></div>
-  </div>
-
-  <div class="section-title" style="margin-top:28px;">11月实际 vs AI介入预估</div>
-  <div class="compare-row">
-    <div class="compare-box"><div class="compare-label">现状</div><div class="compare-value">¥44万</div><div class="compare-sub">24人成交 · 6.5%转化率</div></div>
-    <div class="compare-arrow">→</div>
-    <div class="compare-box highlight"><div class="compare-label">AI介入后</div><div class="compare-value">¥74万</div><div class="compare-sub">40人成交 · 10.9%转化率</div></div>
-  </div>
-</div>
-
-<script>
-function toggleCard(card) { card.classList.toggle('expanded'); }
-function toggleSalesCard(card) {
-  if (event.target.closest('.sales-detail-link')) return;
-  card.classList.toggle('expanded');
-}
-function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  if (tab === 'daily') {
-    document.querySelector('.tab:first-child').classList.add('active');
-    document.getElementById('page-daily').classList.add('active');
-  } else {
-    document.querySelector('.tab:last-child').classList.add('active');
-    document.getElementById('page-value').classList.add('active');
-  }
-}
-const now = new Date();
-const months = ['1','2','3','4','5','6','7','8','9','10','11','12'];
-const days = ['周日','周一','周二','周三','周四','周五','周六'];
-document.querySelector('.date').textContent = `${months[now.getMonth()]}月${now.getDate()}日 ${days[now.getDay()]}`;
-</script>
 </body>
 </html>
