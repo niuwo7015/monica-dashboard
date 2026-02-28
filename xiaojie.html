@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>莫妮卡摩卡 · 今日跟进</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --card-bg: #1a1a1a;
+    --red: #ff4757;
+    --red-bg: rgba(255,71,87,0.08);
+    --yellow: #ffa502;
+    --yellow-bg: rgba(255,165,2,0.08);
+    --green: #2ed573;
+    --green-bg: rgba(46,213,115,0.08);
+    --blue: #3742fa;
+    --text: #f1f1f1;
+    --text-dim: #888;
+    --text-mid: #bbb;
+    --radius: 16px;
+    --done-bg: rgba(46,213,115,0.06);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px 16px 40px;
+    max-width: 480px;
+    margin: 0 auto;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .header h1 {
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .header .badge {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .badge-s { background: var(--red-bg); color: var(--red); }
+
+  /* Date Selector */
+  .date-selector {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .date-selector::-webkit-scrollbar { display: none; }
+  .date-btn {
+    flex-shrink: 0;
+    padding: 10px 16px;
+    border-radius: 12px;
+    background: var(--card-bg);
+    border: 1px solid rgba(255,255,255,0.04);
+    color: var(--text-dim);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    min-width: 72px;
+  }
+  .date-btn.active {
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+    border-color: rgba(255,255,255,0.12);
+  }
+  .date-btn .day-name {
+    font-size: 10px;
+    color: var(--text-dim);
+    display: block;
+    margin-bottom: 2px;
+  }
+  .date-btn.active .day-name { color: var(--text-mid); }
+
+  /* Progress Bar */
+  .progress-section {
+    margin-bottom: 24px;
+  }
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .progress-label {
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .progress-count {
+    font-size: 13px;
+    color: var(--green);
+    font-weight: 600;
+  }
+  .progress-bar {
+    height: 6px;
+    background: var(--card-bg);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--green);
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+
+  /* Customer Cards */
+  .customer-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .customer-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    border: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .customer-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px;
+    height: 100%;
+  }
+  .customer-card.priority-s::before { background: var(--red); }
+  .customer-card.priority-a::before { background: var(--yellow); }
+  .customer-card.priority-b::before { background: var(--blue); }
+
+  .customer-card.done {
+    background: var(--done-bg);
+    border-color: rgba(46,213,115,0.1);
+    opacity: 0.7;
+  }
+  .customer-card.done::before { background: var(--green); }
+
+  .customer-card:active { transform: scale(0.98); }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .customer-name {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .priority-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+  .tag-s { background: var(--red-bg); color: var(--red); }
+  .tag-a { background: var(--yellow-bg); color: var(--yellow); }
+  .tag-b { background: rgba(55,66,250,0.1); color: #7c83ff; }
+
+  .card-stage {
+    font-size: 12px;
+    color: var(--text-mid);
+    margin-bottom: 4px;
+  }
+  .card-issue {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .card-silent {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* Expandable Detail */
+  .card-detail {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, opacity 0.3s ease;
+    opacity: 0;
+  }
+  .customer-card.expanded .card-detail {
+    max-height: 800px;
+    opacity: 1;
+  }
+  .detail-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 14px 0;
+  }
+  .detail-section-title {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .detail-action {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .detail-script {
+    font-size: 13px;
+    color: var(--text-mid);
+    line-height: 1.6;
+    background: rgba(255,255,255,0.03);
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+  }
+
+  /* Done Button */
+  .done-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Noto Sans SC', sans-serif;
+  }
+  .done-btn.pending {
+    background: var(--green);
+    color: #000;
+  }
+  .done-btn.pending:active {
+    transform: scale(0.97);
+  }
+  .done-btn.completed {
+    background: rgba(46,213,115,0.1);
+    color: var(--green);
+    border: 1px solid rgba(46,213,115,0.2);
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .customer-card { animation: fadeUp 0.4s ease both; }
+  .customer-card:nth-child(1) { animation-delay: 0.05s; }
+  .customer-card:nth-child(2) { animation-delay: 0.1s; }
+  .customer-card:nth-child(3) { animation-delay: 0.15s; }
+  .customer-card:nth-child(4) { animation-delay: 0.2s; }
+  .customer-card:nth-child(5) { animation-delay: 0.25s; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>小杰的跟进清单</h1>
+  <span class="badge badge-s">S+A+B1</span>
+</div>
+
+<!-- Date Selector -->
+<div class="date-selector">
+  <div class="date-btn active" onclick="switchDate(this, '0301')">
+    <span class="day-name">周六</span>
+    3/1
+  </div>
+  <div class="date-btn" onclick="switchDate(this, '0302')">
+    <span class="day-name">周日</span>
+    3/2
+  </div>
+  <div class="date-btn" onclick="switchDate(this, '0303')">
+    <span class="day-name">周一</span>
+    3/3
+  </div>
+  <div class="date-btn" onclick="switchDate(this, '0304')">
+    <span class="day-name">周二</span>
+    3/4
+  </div>
+  <div class="date-btn" onclick="switchDate(this, '0305')">
+    <span class="day-name">周三</span>
+    3/5
+  </div>
+</div>
+
+<!-- Progress -->
+<div class="progress-section">
+  <div class="progress-header">
+    <span class="progress-label">今日进度</span>
+    <span class="progress-count" id="progress-text">0/8 已跟进</span>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+  </div>
+</div>
+
+<!-- Customer List -->
+<div class="customer-list" id="customer-list">
+
+  <!-- S级示例 -->
+  <div class="customer-card priority-s" data-id="demo1" onclick="toggleCard(this)">
+    <div class="card-header">
+      <span class="customer-name">张姐 (Jane)</span>
+      <span class="priority-tag tag-s">S级</span>
+    </div>
+    <div class="card-stage">选材期 · 面料方向未定</div>
+    <div class="card-issue">孕晚期+两个孩子，需要好打理的面料</div>
+    <div class="card-silent">沉默 3天 · 上次你们聊了皮和布的区别</div>
+
+    <div class="card-detail">
+      <div class="detail-divider"></div>
+      <div class="detail-section-title">下一步</div>
+      <div class="detail-action">先确认她倾向皮还是布，不要直接寄样。她家有小孩要好打理，科技布可能是最优解。</div>
+      <div class="detail-section-title">建议话术</div>
+      <div class="detail-script">
+        "张姐，之前咱聊了皮和布两个方向，我想了想你家有小朋友，我觉得可以重点看看科技布——防水防污好打理，看起来跟真皮也差不多。你觉得这个方向OK的话，我给你寄几块样看看手感？"
+      </div>
+      <div class="detail-section-title">风险提示</div>
+      <div class="detail-action" style="color:var(--yellow);">中风险 · 孕晚期可能暂停决策，别催太紧</div>
+      <button class="done-btn pending" onclick="markDone(event, 'demo1')">✓ 已跟进</button>
+    </div>
+  </div>
+
+  <!-- A级示例 -->
+  <div class="customer-card priority-a" data-id="demo2" onclick="toggleCard(this)">
+    <div class="card-header">
+      <span class="customer-name">小米</span>
+      <span class="priority-tag tag-a">A级</span>
+    </div>
+    <div class="card-stage">选材期 · 面料纠结中</div>
+    <div class="card-issue">对品牌认可度高，在几种面料间犹豫</div>
+    <div class="card-silent">沉默 5天 · 上次聊了雪尼尔和科技布</div>
+
+    <div class="card-detail">
+      <div class="detail-divider"></div>
+      <div class="detail-section-title">下一步</div>
+      <div class="detail-action">寄两种面料样品让她对比手感。她已经认可品牌了，卡点就在选面料，推一把就能进议价。</div>
+      <div class="detail-section-title">建议话术</div>
+      <div class="detail-script">
+        "小米姐，上次你说雪尼尔和科技布都喜欢，要不我给你各寄一块？摸到手感就好选了，很多客户都是摸完马上就定了～"
+      </div>
+      <button class="done-btn pending" onclick="markDone(event, 'demo2')">✓ 已跟进</button>
+    </div>
+  </div>
+
+  <!-- B1级示例 -->
+  <div class="customer-card priority-b" data-id="demo3" onclick="toggleCard(this)">
+    <div class="card-header">
+      <span class="customer-name">Lily (加拿大)</span>
+      <span class="priority-tag tag-b">B1级</span>
+    </div>
+    <div class="card-stage">选品期 · 海运信任未解决</div>
+    <div class="card-issue">购买力OK，担心海运损坏和售后</div>
+    <div class="card-silent">沉默 12天 · 上次问了运费和保险</div>
+
+    <div class="card-detail">
+      <div class="detail-divider"></div>
+      <div class="detail-section-title">下一步</div>
+      <div class="detail-action">解决运输信任问题。发之前海外客户的开箱视频/照片，展示包装质量。强调运输保险和售后承诺。</div>
+      <div class="detail-section-title">建议话术</div>
+      <div class="detail-script">
+        "Lily你好～上次你问的海运问题我整理了一下：我们发加拿大的客户已经有好几个了，全程木架打包+运输险全保。给你看几个客户收到货的照片，包装完好的👇"
+      </div>
+      <button class="done-btn pending" onclick="markDone(event, 'demo3')">✓ 已跟进</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// --- Google Sheets Integration ---
+// 替换为你的Google Apps Script Web App URL
+const SHEET_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL';
+
+// 销售名称
+const SALES_NAME = '小杰';
+
+function toggleCard(card) {
+  if (event.target.closest('.done-btn')) return;
+  card.classList.toggle('expanded');
+}
+
+function switchDate(btn, date) {
+  document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // TODO: 切换日期后加载对应客户列表
+  updateProgress();
+}
+
+function markDone(e, customerId) {
+  e.stopPropagation();
+  const card = document.querySelector(`[data-id="${customerId}"]`);
+  const btn = card.querySelector('.done-btn');
+  
+  if (card.classList.contains('done')) return;
+  
+  card.classList.add('done');
+  btn.classList.remove('pending');
+  btn.classList.add('completed');
+  btn.textContent = '✓ 已完成';
+  
+  // 记录到本地
+  const doneList = JSON.parse(localStorage.getItem('done') || '[]');
+  doneList.push({
+    id: customerId,
+    sales: SALES_NAME,
+    time: new Date().toISOString()
+  });
+  localStorage.setItem('done', JSON.stringify(doneList));
+  
+  // 同步到Google Sheets
+  if (SHEET_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_URL') {
+    fetch(SHEET_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'markDone',
+        sales: SALES_NAME,
+        customerId: customerId,
+        customerName: card.querySelector('.customer-name').textContent,
+        time: new Date().toISOString()
+      })
+    }).catch(err => console.log('Sync failed, saved locally'));
+  }
+  
+  updateProgress();
+}
+
+function updateProgress() {
+  const total = document.querySelectorAll('.customer-card').length;
+  const done = document.querySelectorAll('.customer-card.done').length;
+  document.getElementById('progress-text').textContent = `${done}/${total} 已跟进`;
+  document.getElementById('progress-fill').style.width = `${(done/total)*100}%`;
+}
+
+// Init
+updateProgress();
+
+// 恢复已完成状态
+const saved = JSON.parse(localStorage.getItem('done') || '[]');
+saved.forEach(item => {
+  const card = document.querySelector(`[data-id="${item.id}"]`);
+  if (card) {
+    card.classList.add('done');
+    const btn = card.querySelector('.done-btn');
+    btn.classList.remove('pending');
+    btn.classList.add('completed');
+    btn.textContent = '✓ 已完成';
+  }
+});
+updateProgress();
+</script>
+
+</body>
+</html>
