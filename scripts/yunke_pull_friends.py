@@ -83,7 +83,9 @@ def pull_friends_page(wechat_id, page_timestamp="0"):
             resp.raise_for_status()
             data = resp.json()
 
-            if data.get('code') != 0 and data.get('code') != 200:
+            # API may return {code: 0/200, data: ...} or {success: true, data: ...}
+            is_success = data.get('code') in (0, 200) or data.get('success') is True
+            if not is_success:
                 logger.warning(f"API返回错误: {data}")
                 if retry < 2:
                     time.sleep(10)
@@ -129,7 +131,7 @@ def sync_friends_for_sales(wechat_id):
             logger.error(f"拉取好友失败: {wechat_id}")
             break
 
-        friends = data.get('list', [])
+        friends = data.get('friends', data.get('list', []))
         if not friends:
             break
 

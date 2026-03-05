@@ -118,7 +118,9 @@ def pull_one_batch(create_timestamp):
             resp.raise_for_status()
             data = resp.json()
 
-            if data.get('code') != 0 and data.get('code') != 200:
+            # API may return {code: 0/200, data: ...} or {success: true, data: ...}
+            is_success = data.get('code') in (0, 200) or data.get('success') is True
+            if not is_success:
                 logger.warning(f"API返回错误: {data}")
                 if retry < 2:
                     time.sleep(10)
@@ -264,7 +266,7 @@ def main():
             time.sleep(5)
             continue
 
-        records = data.get('list', [])
+        records = data.get('messages', data.get('list', []))
         end_ts = data.get('end', 0)
 
         pulled = len(records)
