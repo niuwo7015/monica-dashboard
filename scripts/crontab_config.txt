@@ -1,0 +1,8 @@
+# Monica销售AI系统定时任务
+# 部署到阿里云服务器: 119.23.44.77
+
+# 每小时拉取云客聊天记录（增量）
+0 * * * * cd /home/admin/monica-scripts && python3 yunke_pull_chat.py >> /var/log/monica/pull_chat.log 2>&1
+
+# 每天早上7:30同步好友列表
+30 7 * * * cd /home/admin/monica-scripts && python3 yunke_pull_friends.py >> /var/log/monica/pull_friends.log 2>&1
