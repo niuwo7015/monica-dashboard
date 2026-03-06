@@ -227,6 +227,220 @@ def iso_to_timestamp_ms(iso_str):
         return None
 
 
+def yunke_api_call(path, body):
+    """通用云客API调用（带签名和重试）"""
+    timestamp_ms = str(int(time.time() * 1000))
+    sign = make_sign(timestamp_ms)
+    headers = {
+        'partnerId': PARTNER_ID,
+        'company': COMPANY,
+        'timestamp': timestamp_ms,
+        'sign': sign,
+        'Content-Type': 'application/json'
+    }
+    for retry in range(3):
+        try:
+            resp = requests.post(f"{API_BASE}{path}", json=body, headers=headers, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            is_success = data.get('code') in (0, 200) or data.get('success') is True
+            if not is_success:
+                logger.warning(f"API返回错误 {path}: {data.get('message', data)}")
+                if retry < 2:
+                    time.sleep(10)
+                    continue
+                return None
+            return data.get('data', {})
+        except Exception as e:
+            logger.error(f"API请求失败 {path} (retry {retry+1}/3): {e}")
+            if retry < 2:
+                time.sleep(10)
+    return None
+
+
+# ============ 群聊回补（records接口） ============
+
+def pull_group_list():
+    """通过friends接口获取所有群ID，返回 [(group_id, sales_wechat_id), ...]"""
+    groups = []
+    seen = set()
+
+    for wechat_id in SALES_WECHAT_MAP:
+        page = 1
+        while True:
+            data = yunke_api_call('/open/wechat/friends', {
+                'wechatId': wechat_id,
+                'pageIndex': page,
+                'pageSize': 100,
+                'type': 2,
+            })
+            time.sleep(5)
+
+            if not data:
+                break
+
+            items = data.get('page', [])
+            for item in items:
+                gid = item.get('id', '')
+                if '@chatroom' in gid and gid not in seen:
+                    seen.add(gid)
+                    groups.append((gid, wechat_id))
+
+            if len(items) < 100:
+                break
+            page += 1
+
+        logger.info(f"  {wechat_id}: 累计发现 {len(seen)} 个群")
+
+    return groups
+
+
+def pull_group_records(group_id, wechat_id, start_date=None, end_date=None):
+    """用records接口拉取一个群的聊天记录，返回消息列表"""
+    all_msgs = []
+    body = {
+        'friendWechatId': group_id,
+        'wechatId': wechat_id,
+        'userId': PARTNER_ID,
+    }
+    if start_date:
+        body['startDate'] = start_date
+    if end_date:
+        body['endDate'] = end_date
+
+    rounds = 0
+    while rounds < 50:
+        rounds += 1
+        data = yunke_api_call('/open/wechat/records', body)
+        time.sleep(5)
+
+        if not data:
+            break
+
+        msgs = data.get('messages', [])
+        all_msgs.extend(msgs)
+
+        if not data.get('hasNext') or not msgs:
+            break
+
+        body['start'] = data.get('end')
+
+    return all_msgs
+
+
+def process_group_records(records, group_id, sales_wechat_id):
+    """处理records接口返回的群聊消息并写入（talker=发言者wxid）"""
+    if not records:
+        return 0, 0
+
+    inserted = 0
+    skipped = 0
+
+    sales_id = get_sales_id(sales_wechat_id)
+
+    for record in records:
+        msg_svr_id = record.get('msgSvrId')
+        if not msg_svr_id:
+            skipped += 1
+            continue
+
+        is_mine = record.get('mine', False)
+        sender_type = 'sales' if is_mine else 'customer'
+
+        # records接口: talker=发言者wxid, oriTalker/roomid=群ID
+        sender_wxid = record.get('talker', '')
+        room_id = record.get('oriTalker') or record.get('roomid') or group_id
+
+        customer_id = None
+        if not is_mine and sender_wxid and sales_wechat_id:
+            customer_id = get_customer_id(sender_wxid, sales_wechat_id)
+
+        row = {
+            'msg_svr_id': str(msg_svr_id),
+            'wechat_id': sender_wxid,
+            'sender_type': sender_type,
+            'content': record.get('text', ''),
+            'msg_type': str(record.get('type', '')),
+            'sent_at': timestamp_ms_to_iso(record.get('timestamp')),
+            'file_url': record.get('file', ''),
+            'room_id': room_id,
+        }
+
+        if sales_id:
+            row['sales_id'] = sales_id
+        if customer_id:
+            row['customer_id'] = customer_id
+
+        for k, v in row.items():
+            if v == '':
+                row[k] = None
+
+        try:
+            supabase.table('chat_messages').upsert(
+                row,
+                on_conflict='msg_svr_id'
+            ).execute()
+            inserted += 1
+        except Exception as e:
+            logger.warning(f"写入失败 msg_svr_id={msg_svr_id}: {e}")
+            skipped += 1
+
+    return inserted, skipped
+
+
+def backfill_group_chats():
+    """回补所有群聊记录：逐群拉取，按3天窗口分段"""
+    logger.info("=" * 60)
+    logger.info("开始群聊历史回补（records接口，3天窗口）")
+
+    groups = pull_group_list()
+    logger.info(f"共发现 {len(groups)} 个群")
+
+    now = datetime.now()
+    total_pulled = 0
+    total_inserted = 0
+    total_skipped = 0
+
+    for i, (group_id, wechat_id) in enumerate(groups):
+        group_pulled = 0
+        group_inserted = 0
+
+        # 按3天窗口从BACKFILL_START到now
+        window_start = BACKFILL_START
+        while window_start < now:
+            window_end = min(window_start + timedelta(days=3), now)
+            start_str = window_start.strftime('%Y-%m-%d %H:%M:%S')
+            end_str = window_end.strftime('%Y-%m-%d %H:%M:%S')
+
+            msgs = pull_group_records(group_id, wechat_id, start_str, end_str)
+            if msgs:
+                inserted, skipped = process_group_records(msgs, group_id, wechat_id)
+                group_pulled += len(msgs)
+                group_inserted += inserted
+                total_skipped += skipped
+
+            window_start = window_end
+
+        total_pulled += group_pulled
+        total_inserted += group_inserted
+
+        if group_pulled > 0:
+            logger.info(
+                f"  群[{i+1}/{len(groups)}] {group_id}: "
+                f"拉取{group_pulled}条, 写入{group_inserted}条"
+            )
+        elif (i + 1) % 20 == 0:
+            logger.info(f"  进度: {i+1}/{len(groups)} 个群已处理")
+
+    logger.info("=" * 60)
+    logger.info(
+        f"群聊回补完成: 共{len(groups)}个群, "
+        f"总拉取{total_pulled}条, 总写入{total_inserted}条, 总跳过{total_skipped}条"
+    )
+    logger.info("=" * 60)
+    return total_pulled, total_inserted, total_skipped
+
+
 def main():
     logger.info("=" * 60)
     logger.info("开始历史回补（从2025年8月1日起）")
@@ -295,11 +509,16 @@ def main():
 
         time.sleep(5)
 
-    logger.info("=" * 60)
     logger.info(
-        f"回补完成! 总计: 拉取{total_pulled}条, 写入{total_inserted}条, "
+        f"allRecords回补完成: 拉取{total_pulled}条, 写入{total_inserted}条, "
         f"跳过{total_skipped}条, 共{round_num}轮"
     )
+
+    # ---- 第二步: records接口回补群聊消息 ----
+    backfill_group_chats()
+
+    logger.info("=" * 60)
+    logger.info("全部回补完成!")
     logger.info("=" * 60)
 
 
