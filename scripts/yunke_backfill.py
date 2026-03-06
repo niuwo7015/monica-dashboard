@@ -274,7 +274,7 @@ def pull_group_list():
                 'pageSize': 100,
                 'type': 2,
             })
-            time.sleep(5)
+            time.sleep(15)
 
             if not data:
                 break
@@ -312,7 +312,7 @@ def pull_group_records(group_id, wechat_id, start_date=None, end_date=None):
     while rounds < 50:
         rounds += 1
         data = yunke_api_call('/open/wechat/records', body)
-        time.sleep(5)
+        time.sleep(15)
 
         if not data:
             break
@@ -472,7 +472,7 @@ def main():
         if data is None:
             logger.error(f"第{round_num}轮拉取失败，跳过1小时继续")
             current_ts += 3600 * 1000
-            time.sleep(5)
+            time.sleep(15)
             continue
 
         records = data.get('messages', data.get('list', []))
@@ -502,7 +502,7 @@ def main():
             # 没有返回end，手动往前推1小时
             current_ts += 3600 * 1000
 
-        time.sleep(5)
+        time.sleep(15)
 
     logger.info(
         f"allRecords回补完成: 拉取{total_pulled}条, 写入{total_inserted}条, "
