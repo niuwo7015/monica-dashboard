@@ -107,7 +107,7 @@ def pull_one_batch(create_timestamp):
 
     body = {
         'timestamp': timestamp_ms,
-        'createTimestamp': str(create_timestamp)
+        'createTimestamp': int(create_timestamp)
     }
 
     url = f"{API_BASE}/open/wechat/allRecords"

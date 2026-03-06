@@ -56,8 +56,8 @@ def make_sign(timestamp_ms):
     return hashlib.md5(raw.encode()).hexdigest().upper()
 
 
-def pull_friends_page(wechat_id, page_timestamp="0"):
-    """拉取一页好友列表"""
+def pull_friends_page(wechat_id, page_index=1):
+    """拉取一页好友列表（pageIndex分页）"""
     timestamp_ms = str(int(time.time() * 1000))
     sign = make_sign(timestamp_ms)
 
@@ -72,7 +72,8 @@ def pull_friends_page(wechat_id, page_timestamp="0"):
     body = {
         'wechatId': wechat_id,
         'userId': PARTNER_ID,
-        'timestamp': page_timestamp,
+        'timestamp': timestamp_ms,
+        'pageIndex': page_index,
     }
 
     url = f"{API_BASE}/open/wechat/friends"
@@ -123,21 +124,36 @@ def sync_friends_for_sales(wechat_id):
     new_count = 0
     update_count = 0
     deleted_count = 0
-    page_timestamp = "0"
 
-    while True:
-        data = pull_friends_page(wechat_id, page_timestamp)
-        if data is None:
-            logger.error(f"拉取好友失败: {wechat_id}")
-            break
+    # 先拉第1页，获取总页数
+    page_index = 1
+    first_data = pull_friends_page(wechat_id, page_index)
+    if first_data is None:
+        logger.error(f"拉取好友第1页失败: {wechat_id}")
+        return 0, 0, 0, 0
 
-        friends = data.get('friends', data.get('list', []))
+    page_count = first_data.get('pageCount', 1)
+    logger.info(f"  {wechat_id}: 总页数={page_count}")
+
+    # 遍历所有页（从第1页到pageCount）
+    while page_index <= page_count:
+        if page_index == 1:
+            data = first_data  # 复用第1页数据
+        else:
+            data = pull_friends_page(wechat_id, page_index)
+            if data is None:
+                logger.error(f"拉取好友第{page_index}页失败: {wechat_id}")
+                break
+
+        friends = data.get('page', data.get('list', []))
         if not friends:
+            logger.info(f"  第{page_index}页无数据，结束")
             break
 
         for friend in friends:
             total += 1
-            friend_wechat_id = friend.get('wechatId', '')
+            # Bug 2 修复: API实际返回 id 而非 wechatId, name 而非 nickname
+            friend_wechat_id = friend.get('id', friend.get('wechatId', ''))
             if not friend_wechat_id:
                 continue
 
@@ -148,7 +164,7 @@ def sync_friends_for_sales(wechat_id):
             row = {
                 'wechat_id': friend_wechat_id,
                 'wechat_alias': friend.get('alias'),
-                'nickname': friend.get('nickname'),
+                'nickname': friend.get('name', friend.get('nickname')),
                 'remark': friend.get('remark'),
                 'friend_type': friend.get('type', 1),
                 'from_type': friend.get('fromType'),
@@ -188,13 +204,7 @@ def sync_friends_for_sales(wechat_id):
             except Exception as e:
                 logger.warning(f"写入contacts失败 wechat_id={friend_wechat_id}: {e}")
 
-        # 检查分页
-        end_ts = data.get('end', '0')
-        if end_ts and str(end_ts) != '0' and str(end_ts) != page_timestamp:
-            page_timestamp = str(end_ts)
-        else:
-            break
-
+        page_index += 1
         time.sleep(2)
 
     logger.info(
