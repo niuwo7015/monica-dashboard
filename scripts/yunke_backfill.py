@@ -94,7 +94,11 @@ def make_sign(timestamp_ms):
 
 
 def pull_one_batch(create_timestamp):
-    """拉取一批聊天记录（1小时数据）"""
+    """拉取一批聊天记录（1小时数据）
+    返回值：
+    - dict: API成功（可能有数据可能为空）
+    - 'RATE_LIMITED': 被限流或请求失败
+    """
     timestamp_ms = str(int(time.time() * 1000))
     sign = make_sign(timestamp_ms)
 
@@ -106,8 +110,8 @@ def pull_one_batch(create_timestamp):
         'Content-Type': 'application/json'
     }
 
+    # Bug 2修复：body只传createTimestamp，不传timestamp
     body = {
-        'timestamp': timestamp_ms,
         'createTimestamp': int(create_timestamp)
     }
 
@@ -119,21 +123,33 @@ def pull_one_batch(create_timestamp):
             resp.raise_for_status()
             data = resp.json()
 
-            # API may return {code: 0/200, data: ...} or {success: true, data: ...}
             is_success = data.get('code') in (0, 200) or data.get('success') is True
+
             if not is_success:
+                msg = str(data.get('message', ''))
                 logger.warning(f"API返回错误: {data}")
-                if retry < 2:
-                    time.sleep(10)
-                    continue
-                return None
+
+                # 区分限流和其他错误
+                if '频繁' in msg:
+                    if retry < 2:
+                        logger.info(f"被限流，等待30秒后重试 ({retry+1}/3)")
+                        time.sleep(30)
+                        continue
+                    return 'RATE_LIMITED'
+                else:
+                    if retry < 2:
+                        time.sleep(10)
+                        continue
+                    return 'RATE_LIMITED'
 
             return data.get('data', {})
+
         except Exception as e:
             logger.error(f"API请求失败 (retry {retry+1}/3): {e}")
             if retry < 2:
                 time.sleep(10)
-    return None
+
+    return 'RATE_LIMITED'
 
 
 def timestamp_ms_to_iso(ts_ms):
@@ -262,9 +278,14 @@ def iso_to_timestamp_ms(iso_str):
 
 
 def yunke_api_call(path, body):
-    """通用云客API调用（带签名和重试）"""
+    """通用云客API调用（带签名和重试）
+    返回值：
+    - dict: API成功
+    - 'RATE_LIMITED': 被限流或请求失败
+    """
     timestamp_ms = str(int(time.time() * 1000))
     sign = make_sign(timestamp_ms)
+
     headers = {
         'partnerId': PARTNER_ID,
         'company': COMPANY,
@@ -272,24 +293,39 @@ def yunke_api_call(path, body):
         'sign': sign,
         'Content-Type': 'application/json'
     }
+
     for retry in range(3):
         try:
             resp = requests.post(f"{API_BASE}{path}", json=body, headers=headers, timeout=30)
             resp.raise_for_status()
             data = resp.json()
+
             is_success = data.get('code') in (0, 200) or data.get('success') is True
+
             if not is_success:
-                logger.warning(f"API返回错误 {path}: {data.get('message', data)}")
-                if retry < 2:
-                    time.sleep(10)
-                    continue
-                return None
+                msg = str(data.get('message', ''))
+                logger.warning(f"API返回错误 {path}: {msg}")
+
+                if '频繁' in msg:
+                    if retry < 2:
+                        logger.info(f"被限流，等待30秒后重试 ({retry+1}/3)")
+                        time.sleep(30)
+                        continue
+                    return 'RATE_LIMITED'
+                else:
+                    if retry < 2:
+                        time.sleep(10)
+                        continue
+                    return 'RATE_LIMITED'
+
             return data.get('data', {})
+
         except Exception as e:
             logger.error(f"API请求失败 {path} (retry {retry+1}/3): {e}")
             if retry < 2:
                 time.sleep(10)
-    return None
+
+    return 'RATE_LIMITED'
 
 
 # ============ 群聊回补（records接口） ============
@@ -310,6 +346,11 @@ def pull_group_list():
             })
             time.sleep(8)
 
+            if data == 'RATE_LIMITED':
+                logger.warning(f"拉取好友列表被限流，等待60秒后重试")
+                time.sleep(60)
+                continue  # 重试当前页
+
             if not data:
                 break
 
@@ -329,24 +370,34 @@ def pull_group_list():
     return groups
 
 
-def pull_group_records(group_id, wechat_id, start_date=None, end_date=None):
-    """用records接口拉取一个群的聊天记录，返回消息列表"""
+def pull_group_records(group_id, wechat_id, start_ts_sec=None, end_ts_sec=None):
+    """用records接口拉取一个群的聊天记录，返回消息列表
+    start_ts_sec/end_ts_sec: 秒级时间戳（文档要求）
+    """
     all_msgs = []
     body = {
         'friendWechatId': group_id,
         'wechatId': wechat_id,
         'userId': PARTNER_ID,
     }
-    if start_date:
-        body['startDate'] = start_date
-    if end_date:
-        body['endDate'] = end_date
+
+    # Bug 5修复：用秒级时间戳，不用日期字符串
+    if start_ts_sec:
+        body['start'] = int(start_ts_sec)
+    if end_ts_sec:
+        body['end'] = int(end_ts_sec)
 
     rounds = 0
     while rounds < 50:
         rounds += 1
         data = yunke_api_call('/open/wechat/records', body)
         time.sleep(8)
+
+        # 限流处理
+        if data == 'RATE_LIMITED':
+            logger.warning(f"群 {group_id} 拉取被限流，等待60秒")
+            time.sleep(60)
+            continue
 
         if not data:
             break
@@ -465,10 +516,10 @@ def backfill_group_chats():
             else:
                 window_end = min(window_start + timedelta(days=3), now)
 
-            start_str = window_start.strftime('%Y-%m-%d %H:%M:%S')
-            end_str = window_end.strftime('%Y-%m-%d %H:%M:%S')
+            start_sec = int(window_start.timestamp())
+            end_sec = int(window_end.timestamp())
 
-            msgs = pull_group_records(group_id, wechat_id, start_str, end_str)
+            msgs = pull_group_records(group_id, wechat_id, start_sec, end_sec)
             if msgs:
                 inserted, skipped = process_group_records(msgs, group_id, wechat_id)
                 group_pulled += len(msgs)
@@ -505,8 +556,7 @@ def backfill_group_chats():
 def backfill_all_records():
     """
     allRecords回补：固定1小时窗口逐段扫描，带内层分页。
-    关键修复：不依赖API返回的end来推进时间，固定每次前进1小时，
-    确保每个小时都被查询到。
+    M-006修复：区分限流与空数据，限流时不前进时间窗口。
     """
     logger.info("=" * 60)
     logger.info(f"开始allRecords私聊历史回补（从 {BACKFILL_START} 起）")
@@ -514,12 +564,12 @@ def backfill_all_records():
     start_ts = int(BACKFILL_START.timestamp() * 1000)
     now_ts = int(time.time() * 1000)
     current_ts = start_ts
-
     total_pulled = 0
     total_inserted = 0
     total_skipped = 0
     round_num = 0
     empty_rounds = 0
+    rate_limit_streak = 0  # 连续限流计数
 
     estimated_hours = (now_ts - current_ts) / (3600 * 1000)
     logger.info(f"需要扫描 {estimated_hours:.0f} 个小时窗口")
@@ -527,8 +577,9 @@ def backfill_all_records():
     while current_ts < now_ts:
         round_num += 1
         round_records = []
+        was_rate_limited = False
 
-        # ---- 内层分页循环：对当前createTimestamp做分页 ----
+        # ---- 内层分页循环 ----
         fetch_ts = current_ts
         page = 0
 
@@ -536,7 +587,9 @@ def backfill_all_records():
             page += 1
             data = pull_one_batch(fetch_ts)
 
-            if data is None:
+            # 限流处理：不前进，等待后重试
+            if data == 'RATE_LIMITED':
+                was_rate_limited = True
                 break
 
             records = data.get('messages', data.get('list', []))
@@ -545,12 +598,25 @@ def backfill_all_records():
             end_ts = data.get('end', 0)
             has_next = data.get('hasNext', False)
 
-            # 继续分页条件：有hasNext + end前进了 + 本批有数据
             if has_next and end_ts and int(end_ts) > fetch_ts and records:
                 fetch_ts = int(end_ts)
-                time.sleep(3)
+                time.sleep(8)  # Bug 4修复：内层分页也要≥8秒
             else:
                 break
+
+        # ---- 限流：不前进时间，长等待后重试 ----
+        if was_rate_limited:
+            rate_limit_streak += 1
+            if rate_limit_streak >= 5:
+                logger.warning(f"连续{rate_limit_streak}次限流，等待120秒")
+                time.sleep(120)
+            else:
+                logger.warning(f"被限流（连续第{rate_limit_streak}次），等待60秒后重试当前窗口")
+                time.sleep(60)
+            continue  # 不前进current_ts，重试当前小时窗口
+
+        # 成功调用，重置限流计数
+        rate_limit_streak = 0
 
         # ---- 批量写入 ----
         if round_records:
@@ -578,16 +644,11 @@ def backfill_all_records():
                 f"空窗口(连续{empty_rounds}个) | 累计: 拉取{total_pulled}"
             )
 
-        # ★ 关键修复：固定前进1小时，绝不依赖API的end跳转 ★
+        # ★ 固定前进1小时 ★
         current_ts += 3600 * 1000
 
-        # 动态休眠：连续空窗口时缩短等待
-        if empty_rounds > 20:
-            time.sleep(2)
-        elif empty_rounds > 5:
-            time.sleep(3)
-        else:
-            time.sleep(5)
+        # 统一休眠≥10秒（文档要求≥8秒，留余量）
+        time.sleep(10)
 
     logger.info(
         f"allRecords回补完成: 拉取{total_pulled}条, 写入{total_inserted}条, "
