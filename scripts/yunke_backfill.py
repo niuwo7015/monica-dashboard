@@ -274,7 +274,7 @@ def pull_group_list():
                 'pageSize': 100,
                 'type': 2,
             })
-            time.sleep(15)
+            time.sleep(8)
 
             if not data:
                 break
@@ -312,7 +312,7 @@ def pull_group_records(group_id, wechat_id, start_date=None, end_date=None):
     while rounds < 50:
         rounds += 1
         data = yunke_api_call('/open/wechat/records', body)
-        time.sleep(15)
+        time.sleep(8)
 
         if not data:
             break
@@ -388,10 +388,23 @@ def process_group_records(records, group_id, sales_wechat_id):
     return inserted, skipped
 
 
+def get_group_latest_sent_at(group_id):
+    """查询某个群在chat_messages中最新的sent_at"""
+    try:
+        result = supabase.table('chat_messages').select('sent_at').eq(
+            'room_id', group_id
+        ).order('sent_at', desc=True).limit(1).execute()
+        if result.data and result.data[0].get('sent_at'):
+            return result.data[0]['sent_at']
+    except Exception:
+        pass
+    return None
+
+
 def backfill_group_chats():
-    """回补所有群聊记录：逐群拉取，按3天窗口分段"""
+    """回补所有群聊记录：逐群拉取，按3天窗口分段（优化版）"""
     logger.info("=" * 60)
-    logger.info("开始群聊历史回补（records接口，3天窗口）")
+    logger.info("开始群聊历史回补（records接口，优化版）")
 
     groups = pull_group_list()
     logger.info(f"共发现 {len(groups)} 个群")
@@ -400,15 +413,32 @@ def backfill_group_chats():
     total_pulled = 0
     total_inserted = 0
     total_skipped = 0
+    skipped_groups = 0
 
     for i, (group_id, wechat_id) in enumerate(groups):
         group_pulled = 0
         group_inserted = 0
 
-        # 按3天窗口从BACKFILL_START到now
-        window_start = BACKFILL_START
+        # 查询该群已有数据的最新时间，从那之后开始回补
+        existing_latest = get_group_latest_sent_at(group_id)
+        if existing_latest:
+            try:
+                window_start = datetime.fromisoformat(existing_latest.replace('Z', '+00:00')).replace(tzinfo=None)
+                logger.info(f"  群[{i+1}/{len(groups)}] {group_id}: 已有数据到 {existing_latest}，增量回补")
+            except (ValueError, TypeError):
+                window_start = BACKFILL_START
+        else:
+            window_start = BACKFILL_START
+
+        empty_streak = 0  # 连续空窗口计数
+
         while window_start < now:
-            window_end = min(window_start + timedelta(days=3), now)
+            # 连续3个空窗口后跳到更大步长（7天）
+            if empty_streak >= 3:
+                window_end = min(window_start + timedelta(days=7), now)
+            else:
+                window_end = min(window_start + timedelta(days=3), now)
+
             start_str = window_start.strftime('%Y-%m-%d %H:%M:%S')
             end_str = window_end.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -418,6 +448,9 @@ def backfill_group_chats():
                 group_pulled += len(msgs)
                 group_inserted += inserted
                 total_skipped += skipped
+                empty_streak = 0
+            else:
+                empty_streak += 1
 
             window_start = window_end
 
@@ -429,12 +462,14 @@ def backfill_group_chats():
                 f"  群[{i+1}/{len(groups)}] {group_id}: "
                 f"拉取{group_pulled}条, 写入{group_inserted}条"
             )
-        elif (i + 1) % 20 == 0:
-            logger.info(f"  进度: {i+1}/{len(groups)} 个群已处理")
+        else:
+            skipped_groups += 1
+            if (i + 1) % 20 == 0:
+                logger.info(f"  进度: {i+1}/{len(groups)} 个群已处理")
 
     logger.info("=" * 60)
     logger.info(
-        f"群聊回补完成: 共{len(groups)}个群, "
+        f"群聊回补完成: 共{len(groups)}个群({skipped_groups}个无数据), "
         f"总拉取{total_pulled}条, 总写入{total_inserted}条, 总跳过{total_skipped}条"
     )
     logger.info("=" * 60)
