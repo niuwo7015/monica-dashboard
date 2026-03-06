@@ -51,11 +51,21 @@
 - 返回所有消息类型: 1文本,2图片,3语音,4视频,8GIF,9文件,10链接等
 - 消息字段: mine, talker, wechatId, type, text, file, timestamp, msgSvrId
 
-### 4. 获取聊天数据(短语音和文本) — 有问题
+### 4. 获取指定好友/群的聊天记录 ✅（2026-03-06修复）
 - Path: `/open/wechat/records`
-- 参数需要friendWechatId，用F852466674(HONEY微信号)查询返回空
-- **可能原因**: friendWechatId需要的是好友的微信ID(wxid)而非微信号(alias)
-- 建议: 用allRecords接口替代
+- **之前调不通的原因**: 缺少必填参数 `userId`
+- **解决**: `userId` 传 `partnerId`（即 `pDB33ABE148934DD081FD7D4C80654195`）
+- 参数:
+  ```json
+  {
+    "friendWechatId": "好友wxid或群ID@chatroom",
+    "wechatId": "销售微信号",
+    "userId": "pDB33ABE148934DD081FD7D4C80654195"
+  }
+  ```
+- 返回结构: `data.messages` 数组，`data.hasNext`/`data.hasLast` 翻页标记
+- **群聊消息中 `talker` = 发言者wxid**（与allRecords不同！）
+- 详见下方「六、群聊发言者身份」章节
 
 ## 四、待完成的调试任务
 
@@ -119,3 +129,76 @@ print("DONE")
 - records接口的时间区间最多3天
 - API服务到期时间: 2026-03-20，需续期
 - 服务器很小(2vCPU/1GiB)，别跑太重的任务
+
+## 六、群聊发言者身份（2026-03-06 调查结论）
+
+### 问题
+群聊消息（talker含@chatroom）通过 allRecords 拉到的数据里没有群内发言者的微信ID。但云客后台手动导出的xlsx有"发送人"字段。
+
+### 结论：用 records 接口解决 ✅
+
+#### allRecords 的限制（不可用于群聊完整记录）
+- **不返回群内非销售成员的文本消息**（type=1, mine=false = 0条）
+- 只返回：销售自己发的消息（mine=true）+ 系统通知（type=15，撤回/入群等）
+- `talker` 字段 = 群ID，不是发言者
+
+#### records 接口（正确方案）
+- 正常返回群内所有成员的消息，包括客户文本
+- **`talker` 字段 = 发言者wxid**
+- `oriTalker` / `roomid` = 群ID
+
+#### 调用示例
+```
+POST https://phone.yunkecn.com/open/wechat/records
+
+请求头: 标准签名头（partnerId, company, timestamp, sign）
+
+请求体:
+{
+  "friendWechatId": "57014312248@chatroom",
+  "wechatId": "wxid_am3kdib9tt3722",
+  "userId": "pDB33ABE148934DD081FD7D4C80654195"
+}
+```
+
+#### 两个接口对比
+
+| | allRecords | records |
+|---|---|---|
+| 客户文本消息(type=1,mine=false) | ❌ 不返回 | ✅ 返回 |
+| talker 字段含义 | 群ID | **发言者wxid** |
+| 群ID在哪个字段 | talker | oriTalker / roomid |
+| userId 参数 | 不需要 | **必填，传partnerId** |
+| 适用场景 | 批量拉私聊 | 拉指定群/好友的完整记录 |
+
+#### records 返回的群聊消息结构
+```json
+{
+  "mine": false,
+  "talker": "wxid_lfag5f4qitgp12",      // ★ 发言者wxid
+  "wechatId": "wxid_am3kdib9tt3722",     // 所属销售微信号
+  "oriTalker": "57014312248@chatroom",   // 群ID
+  "roomid": "57014312248@chatroom",      // 群ID
+  "text": "那我要在哪備注 下單的產品呀",
+  "type": 1,
+  "msgSvrId": "1100782783502033865",
+  "isDel": "0",
+  "hasHead": true,
+  "timestamp": 1772711221000
+}
+```
+
+#### 实测验证
+群 `57014312248@chatroom`，records 返回30条，其中19条 mine=false type=1（客户文本），talker 均为 `wxid_lfag5f4qitgp12`。同群用 allRecords 拉取客户文本 = 0条。
+
+#### 补充发现
+- allRecords 中 type=21（引用回复）的 `referMsgJson` 字段包含被引用消息的发言者wxid和昵称，可作为辅助数据源
+- friends 接口传 `type=2` 可过滤群列表，含 `ownerWchatId`（群主），但无群成员列表
+- accounts 返回的 `account` 字段不是 userId（传入会报"用户不存在"）
+- 所有群成员相关路径（groupMembers、chatroom/members等30+路径）均404，云客不提供群成员接口
+
+#### 后续行动
+将 `yunke_sync.py` 群聊消息拉取逻辑从 allRecords 改为 records 接口：
+1. 通过 friends 接口（type=2）获取所有群列表
+2. 逐群调用 records 接口拉取完整群聊记录
+3. 从 talker 字段获取发言者wxid
