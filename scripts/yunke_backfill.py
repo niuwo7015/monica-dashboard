@@ -12,7 +12,7 @@ import time
 import hashlib
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import requests
 from supabase import create_client
@@ -136,12 +136,12 @@ def pull_one_batch(create_timestamp):
 
 
 def timestamp_ms_to_iso(ts_ms):
-    """毫秒时间戳转ISO格式"""
+    """毫秒时间戳转ISO格式(UTC)"""
     if not ts_ms:
         return None
     try:
         ts_sec = int(ts_ms) / 1000
-        return datetime.fromtimestamp(ts_sec).isoformat()
+        return datetime.fromtimestamp(ts_sec, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S+00:00')
     except (ValueError, TypeError, OSError):
         return None
 
@@ -445,19 +445,14 @@ def main():
     logger.info("=" * 60)
     logger.info("开始历史回补（从2025年8月1日起）")
 
-    # 中断续跑：查最新记录
+    # 始终从BACKFILL_START开始，确保不遗漏历史数据
+    # upsert会自动跳过已存在的记录（on_conflict=msg_svr_id）
+    start_ts = int(BACKFILL_START.timestamp() * 1000)
     latest = get_latest_sent_at()
     if latest:
-        resume_ts = iso_to_timestamp_ms(latest)
-        backfill_start_ts = int(BACKFILL_START.timestamp() * 1000)
-        if resume_ts and resume_ts > backfill_start_ts:
-            start_ts = resume_ts
-            logger.info(f"续跑模式: 从 {latest} 继续")
-        else:
-            start_ts = backfill_start_ts
-            logger.info(f"从头开始: {BACKFILL_START}")
+        logger.info(f"数据库已有数据，最新记录: {latest}")
+        logger.info(f"从 {BACKFILL_START} 开始完整回补（已有记录会自动跳过）")
     else:
-        start_ts = int(BACKFILL_START.timestamp() * 1000)
         logger.info(f"表为空，从 {BACKFILL_START} 开始回补")
 
     current_ts = start_ts

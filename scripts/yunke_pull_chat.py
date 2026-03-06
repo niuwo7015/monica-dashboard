@@ -12,7 +12,7 @@ import time
 import hashlib
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import requests
 from supabase import create_client
@@ -136,12 +136,12 @@ def pull_one_batch(create_timestamp):
 
 
 def timestamp_ms_to_iso(ts_ms):
-    """毫秒时间戳转ISO格式"""
+    """毫秒时间戳转ISO格式(UTC)"""
     if not ts_ms:
         return None
     try:
         ts_sec = int(ts_ms) / 1000
-        return datetime.fromtimestamp(ts_sec).isoformat()
+        return datetime.fromtimestamp(ts_sec, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S+00:00')
     except (ValueError, TypeError, OSError):
         return None
 
@@ -232,6 +232,33 @@ def iso_to_timestamp_ms(iso_str):
         return int(dt.timestamp() * 1000)
     except (ValueError, TypeError):
         return None
+
+
+# ============ createTimestamp 状态追踪 ============
+STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.last_create_timestamp')
+
+
+def load_last_create_timestamp():
+    """从状态文件读取上次API返回的end值"""
+    try:
+        if os.path.exists(STATE_FILE):
+            with open(STATE_FILE, 'r') as f:
+                val = f.read().strip()
+                if val:
+                    return int(val)
+    except Exception as e:
+        logger.warning(f"读取状态文件失败: {e}")
+    return None
+
+
+def save_last_create_timestamp(ts):
+    """保存API返回的end值到状态文件"""
+    try:
+        with open(STATE_FILE, 'w') as f:
+            f.write(str(int(ts)))
+        logger.info(f"已保存createTimestamp游标: {ts}")
+    except Exception as e:
+        logger.warning(f"保存状态文件失败: {e}")
 
 
 def yunke_api_call(path, body):
@@ -437,15 +464,21 @@ def main():
     # ---- 第一步: allRecords拉取私聊消息 ----
     logger.info("第一步: allRecords拉取全量消息")
 
-    # 确定起始时间
-    latest = get_latest_sent_at()
-    if latest:
-        start_ts = iso_to_timestamp_ms(latest)
-        logger.info(f"从最新记录时间开始: {latest}")
+    # 确定起始时间：优先使用状态文件中的createTimestamp游标
+    saved_ts = load_last_create_timestamp()
+    if saved_ts:
+        start_ts = saved_ts
+        logger.info(f"从状态文件恢复createTimestamp游标: {saved_ts}")
     else:
-        # 表为空，从24小时前开始
-        start_ts = int((time.time() - 86400) * 1000)
-        logger.info(f"表为空，从24小时前开始")
+        # 降级：从数据库最新记录推算
+        latest = get_latest_sent_at()
+        if latest:
+            start_ts = iso_to_timestamp_ms(latest)
+            logger.info(f"状态文件不存在，从数据库最新记录推算: {latest}")
+        else:
+            # 表为空，从24小时前开始
+            start_ts = int((time.time() - 86400) * 1000)
+            logger.info(f"表为空，从24小时前开始")
 
     current_ts = start_ts
     now_ts = int(time.time() * 1000)
@@ -488,16 +521,20 @@ def main():
         # 调用间隔5秒
         time.sleep(5)
 
+    # 保存当前createTimestamp游标，下次增量拉取从这里继续
+    save_last_create_timestamp(current_ts)
+
     logger.info(f"allRecords完成: 总拉取{total_pulled}条, 总写入{total_inserted}条, 总跳过{total_skipped}条")
 
     # ---- 第二步: records接口补充拉取群聊消息 ----
     # records接口返回群内所有成员的消息, talker=发言者wxid
+    latest_for_group = get_latest_sent_at()
     start_date = None
-    if latest:
-        start_date = latest.replace('T', ' ')[:19]
+    if latest_for_group:
+        start_date = latest_for_group.replace('T', ' ')[:19]
     else:
-        start_date = (datetime.now() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
-    end_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        start_date = (datetime.now(tz=timezone.utc) - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+    end_date = datetime.now(tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 
     grp_pulled, grp_inserted, grp_skipped = pull_all_group_chats(start_date, end_date)
 
