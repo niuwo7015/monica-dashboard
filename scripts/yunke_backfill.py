@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 云客聊天记录历史回补脚本
-- 从2025年8月1日开始，拉取到当前时间
-- 支持中断续跑：从Supabase查最新记录时间继续
-- 每次1小时数据，5秒间隔
+- allRecords：固定1小时窗口逐段扫描私聊消息（带分页），不依赖API end跳转
+- records：逐群拉取群聊消息，按3天窗口分段
+- 批量upsert（50条/批），动态休眠
+- 从2025年9月1日开始，拉取到当前时间
 """
 
 import os
@@ -25,8 +26,8 @@ API_BASE = os.getenv('YUNKE_API_BASE', 'https://phone.yunkecn.com')
 SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://dieeejjzbhkpgxdhwlxf.supabase.co')
 SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY', '')
 
-# 回补起始时间：2025年8月1日
-BACKFILL_START = datetime(2025, 8, 1)
+# 回补起始时间：2025年9月1日
+BACKFILL_START = datetime(2025, 9, 1)
 
 if not SUPABASE_KEY:
     print("ERROR: SUPABASE_SERVICE_ROLE_KEY 环境变量未设置")
@@ -146,63 +147,96 @@ def timestamp_ms_to_iso(ts_ms):
         return None
 
 
-def process_records(records):
-    """处理并写入聊天记录"""
-    if not records:
+def build_row_from_record(record):
+    """将API记录转换为数据库行"""
+    msg_svr_id = record.get('msgSvrId')
+    if not msg_svr_id:
+        return None
+
+    is_mine = record.get('mine', False)
+    sender_type = 'sales' if is_mine else 'customer'
+    wechat_id_field = record.get('wechatId', '')
+    talker = record.get('talker', '')
+
+    sales_id = get_sales_id(wechat_id_field)
+    sales_wechat_id = wechat_id_field if wechat_id_field in SALES_WECHAT_MAP else None
+
+    customer_id = None
+    if talker and sales_wechat_id:
+        customer_id = get_customer_id(talker, sales_wechat_id)
+
+    row = {
+        'msg_svr_id': str(msg_svr_id),
+        'wechat_id': talker,
+        'sender_type': sender_type,
+        'content': record.get('text', ''),
+        'msg_type': str(record.get('type', '')),
+        'sent_at': timestamp_ms_to_iso(record.get('timestamp')),
+        'file_url': record.get('file', ''),
+        'room_id': record.get('roomid', ''),
+    }
+
+    if sales_id:
+        row['sales_id'] = sales_id
+    if customer_id:
+        row['customer_id'] = customer_id
+
+    for k, v in row.items():
+        if v == '':
+            row[k] = None
+
+    return row
+
+
+def batch_upsert(rows, batch_size=50):
+    """批量upsert到chat_messages，失败时回退逐条写入"""
+    if not rows:
         return 0, 0
 
     inserted = 0
     skipped = 0
 
-    for record in records:
-        msg_svr_id = record.get('msgSvrId')
-        if not msg_svr_id:
-            skipped += 1
-            continue
-
-        is_mine = record.get('mine', False)
-        sender_type = 'sales' if is_mine else 'customer'
-        wechat_id_field = record.get('wechatId', '')
-        talker = record.get('talker', '')
-
-        sales_id = get_sales_id(wechat_id_field)
-        sales_wechat_id = wechat_id_field if wechat_id_field in SALES_WECHAT_MAP else None
-
-        customer_id = None
-        if talker and sales_wechat_id:
-            customer_id = get_customer_id(talker, sales_wechat_id)
-
-        row = {
-            'msg_svr_id': str(msg_svr_id),
-            'wechat_id': talker,
-            'sender_type': sender_type,
-            'content': record.get('text', ''),
-            'msg_type': str(record.get('type', '')),
-            'sent_at': timestamp_ms_to_iso(record.get('timestamp')),
-            'file_url': record.get('file', ''),
-            'room_id': record.get('roomid', ''),
-        }
-
-        if sales_id:
-            row['sales_id'] = sales_id
-        if customer_id:
-            row['customer_id'] = customer_id
-
-        for k, v in row.items():
-            if v == '':
-                row[k] = None
-
+    for i in range(0, len(rows), batch_size):
+        batch = rows[i:i + batch_size]
         try:
             supabase.table('chat_messages').upsert(
-                row,
+                batch,
                 on_conflict='msg_svr_id'
             ).execute()
-            inserted += 1
+            inserted += len(batch)
         except Exception as e:
-            logger.warning(f"写入失败 msg_svr_id={msg_svr_id}: {e}")
-            skipped += 1
+            logger.warning(f"批量写入失败({len(batch)}条): {e}，回退逐条写入")
+            for row in batch:
+                try:
+                    supabase.table('chat_messages').upsert(
+                        row,
+                        on_conflict='msg_svr_id'
+                    ).execute()
+                    inserted += 1
+                except Exception as e2:
+                    logger.warning(f"写入失败 msg_svr_id={row.get('msg_svr_id')}: {e2}")
+                    skipped += 1
 
     return inserted, skipped
+
+
+def process_records(records):
+    """处理并批量写入allRecords聊天记录"""
+    if not records:
+        return 0, 0
+
+    rows = []
+    skipped = 0
+
+    for record in records:
+        row = build_row_from_record(record)
+        if row:
+            rows.append(row)
+        else:
+            skipped += 1
+
+    inserted, write_skipped = batch_upsert(rows)
+    return inserted, skipped + write_skipped
 
 
 def get_latest_sent_at():
@@ -329,13 +363,12 @@ def pull_group_records(group_id, wechat_id, start_date=None, end_date=None):
 
 
 def process_group_records(records, group_id, sales_wechat_id):
-    """处理records接口返回的群聊消息并写入（talker=发言者wxid）"""
+    """处理records接口返回的群聊消息并批量写入（talker=发言者wxid）"""
     if not records:
         return 0, 0
 
-    inserted = 0
+    rows = []
     skipped = 0
-
     sales_id = get_sales_id(sales_wechat_id)
 
     for record in records:
@@ -375,17 +408,10 @@ def process_group_records(records, group_id, sales_wechat_id):
             if v == '':
                 row[k] = None
 
-        try:
-            supabase.table('chat_messages').upsert(
-                row,
-                on_conflict='msg_svr_id'
-            ).execute()
-            inserted += 1
-        except Exception as e:
-            logger.warning(f"写入失败 msg_svr_id={msg_svr_id}: {e}")
-            skipped += 1
+        rows.append(row)
 
-    return inserted, skipped
+    inserted, write_skipped = batch_upsert(rows)
+    return inserted, skipped + write_skipped
 
 
 def get_group_latest_sent_at(group_id):
@@ -476,75 +502,110 @@ def backfill_group_chats():
     return total_pulled, total_inserted, total_skipped
 
 
-def main():
+def backfill_all_records():
+    """
+    allRecords回补：固定1小时窗口逐段扫描，带内层分页。
+    关键修复：不依赖API返回的end来推进时间，固定每次前进1小时，
+    确保每个小时都被查询到。
+    """
     logger.info("=" * 60)
-    logger.info("开始历史回补（从2025年8月1日起）")
+    logger.info(f"开始allRecords私聊历史回补（从 {BACKFILL_START} 起）")
 
-    # 始终从BACKFILL_START开始，确保不遗漏历史数据
-    # upsert会自动跳过已存在的记录（on_conflict=msg_svr_id）
     start_ts = int(BACKFILL_START.timestamp() * 1000)
-    latest = get_latest_sent_at()
-    if latest:
-        logger.info(f"数据库已有数据，最新记录: {latest}")
-        logger.info(f"从 {BACKFILL_START} 开始完整回补（已有记录会自动跳过）")
-    else:
-        logger.info(f"表为空，从 {BACKFILL_START} 开始回补")
-
-    current_ts = start_ts
     now_ts = int(time.time() * 1000)
+    current_ts = start_ts
+
     total_pulled = 0
     total_inserted = 0
     total_skipped = 0
     round_num = 0
+    empty_rounds = 0
 
     estimated_hours = (now_ts - current_ts) / (3600 * 1000)
-    logger.info(f"预计需要处理 {estimated_hours:.0f} 小时的数据")
+    logger.info(f"需要扫描 {estimated_hours:.0f} 个小时窗口")
 
     while current_ts < now_ts:
         round_num += 1
-        data = pull_one_batch(current_ts)
+        round_records = []
 
-        if data is None:
-            logger.error(f"第{round_num}轮拉取失败，跳过1小时继续")
-            current_ts += 3600 * 1000
-            time.sleep(15)
-            continue
+        # ---- 内层分页循环：对当前createTimestamp做分页 ----
+        fetch_ts = current_ts
+        page = 0
 
-        records = data.get('messages', data.get('list', []))
-        end_ts = data.get('end', 0)
+        while True:
+            page += 1
+            data = pull_one_batch(fetch_ts)
 
-        pulled = len(records)
-        inserted, skipped = process_records(records)
+            if data is None:
+                break
 
-        total_pulled += pulled
-        total_inserted += inserted
-        total_skipped += skipped
+            records = data.get('messages', data.get('list', []))
+            round_records.extend(records)
 
-        # 计算进度
+            end_ts = data.get('end', 0)
+            has_next = data.get('hasNext', False)
+
+            # 继续分页条件：有hasNext + end前进了 + 本批有数据
+            if has_next and end_ts and int(end_ts) > fetch_ts and records:
+                fetch_ts = int(end_ts)
+                time.sleep(3)
+            else:
+                break
+
+        # ---- 批量写入 ----
+        if round_records:
+            inserted, skipped = process_records(round_records)
+            total_pulled += len(round_records)
+            total_inserted += inserted
+            total_skipped += skipped
+            empty_rounds = 0
+        else:
+            empty_rounds += 1
+
+        # ---- 进度日志 ----
         progress = (current_ts - start_ts) / max(now_ts - start_ts, 1) * 100
-        current_time_str = datetime.fromtimestamp(current_ts / 1000).strftime('%Y-%m-%d %H:%M')
+        time_str = datetime.fromtimestamp(current_ts / 1000).strftime('%Y-%m-%d %H:%M')
 
-        if round_num % 10 == 0 or pulled > 0:
+        if round_records:
             logger.info(
-                f"第{round_num}轮 [{progress:.1f}%] {current_time_str}: "
-                f"拉取{pulled}条, 写入{inserted}条, 跳过{skipped}条 "
+                f"第{round_num}轮 [{progress:.1f}%] {time_str}: "
+                f"本轮{len(round_records)}条({page}页) "
                 f"| 累计: 拉取{total_pulled}, 写入{total_inserted}"
             )
+        elif round_num % 100 == 0:
+            logger.info(
+                f"第{round_num}轮 [{progress:.1f}%] {time_str}: "
+                f"空窗口(连续{empty_rounds}个) | 累计: 拉取{total_pulled}"
+            )
 
-        if end_ts and int(end_ts) > current_ts:
-            current_ts = int(end_ts)
+        # ★ 关键修复：固定前进1小时，绝不依赖API的end跳转 ★
+        current_ts += 3600 * 1000
+
+        # 动态休眠：连续空窗口时缩短等待
+        if empty_rounds > 20:
+            time.sleep(2)
+        elif empty_rounds > 5:
+            time.sleep(3)
         else:
-            # 没有返回end，手动往前推1小时
-            current_ts += 3600 * 1000
-
-        time.sleep(15)
+            time.sleep(5)
 
     logger.info(
         f"allRecords回补完成: 拉取{total_pulled}条, 写入{total_inserted}条, "
-        f"跳过{total_skipped}条, 共{round_num}轮"
+        f"跳过{total_skipped}条, 共{round_num}个小时窗口"
     )
+    logger.info("=" * 60)
+    return total_pulled, total_inserted, total_skipped
 
-    # ---- 第二步: records接口回补群聊消息 ----
+
+def main():
+    logger.info("=" * 60)
+    logger.info("开始历史回补（全量）")
+    logger.info("=" * 60)
+
+    # 第一步：allRecords回补私聊消息
+    backfill_all_records()
+
+    # 第二步：records接口回补群聊消息
     backfill_group_chats()
 
     logger.info("=" * 60)
