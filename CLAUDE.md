@@ -42,6 +42,7 @@ frontend/                # SalesToday前端
 ## 服务器信息
 
 - 阿里云：119.23.44.77（admin用户，SSH密钥已配置）
+- SSH连接：ssh -i ~/.ssh/aliyun_jst admin@119.23.44.77
 - 脚本目录：/home/admin/monica-scripts/
 - 日志目录：/var/log/monica/
 - 数据库：Supabase（新加坡），URL见环境变量
