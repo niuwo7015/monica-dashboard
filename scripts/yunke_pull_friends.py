@@ -117,12 +117,11 @@ def timestamp_to_iso(ts):
 
 
 def sync_friends_for_sales(wechat_id):
-    """同步一个销售的全部好友"""
+    """同步一个销售的全部好友（使用batch upsert）"""
     logger.info(f"开始同步: {wechat_id}")
 
     total = 0
-    new_count = 0
-    update_count = 0
+    upsert_count = 0
     deleted_count = 0
 
     # 先拉第1页，获取总页数
@@ -130,7 +129,7 @@ def sync_friends_for_sales(wechat_id):
     first_data = pull_friends_page(wechat_id, page_index)
     if first_data is None:
         logger.error(f"拉取好友第1页失败: {wechat_id}")
-        return 0, 0, 0, 0
+        return 0, 0, 0
 
     page_count = first_data.get('pageCount', 1)
     logger.info(f"  {wechat_id}: 总页数={page_count}")
@@ -150,6 +149,8 @@ def sync_friends_for_sales(wechat_id):
             logger.info(f"  第{page_index}页无数据，结束")
             break
 
+        # 构建本页的batch rows
+        batch_rows = []
         for friend in friends:
             total += 1
             # Bug 2 修复: API实际返回 id 而非 wechatId, name 而非 nickname
@@ -183,35 +184,42 @@ def sync_friends_for_sales(wechat_id):
 
             # 清理None值
             row = {k: v for k, v in row.items() if v is not None}
+            batch_rows.append(row)
 
+        # M-019修复: 用batch upsert替代逐条GET+INSERT/UPDATE
+        # 旧代码的SELECT查询在supabase-py v2下返回错误结果，
+        # 导致13,000+好友被误判为"已存在"走UPDATE分支，PATCH空行静默成功
+        if batch_rows:
             try:
-                # 先查是否存在
-                existing = supabase.table('contacts').select('id').eq(
-                    'wechat_id', friend_wechat_id
-                ).eq('sales_wechat_id', wechat_id).execute()
-
-                if existing.data:
-                    # 更新
-                    supabase.table('contacts').update(row).eq(
-                        'wechat_id', friend_wechat_id
-                    ).eq('sales_wechat_id', wechat_id).execute()
-                    update_count += 1
-                else:
-                    # 新增
-                    row['created_at'] = datetime.now().isoformat()
-                    supabase.table('contacts').insert(row).execute()
-                    new_count += 1
+                supabase.table('contacts').upsert(
+                    batch_rows,
+                    on_conflict='wechat_id,sales_wechat_id'
+                ).execute()
+                upsert_count += len(batch_rows)
+                logger.info(f"  第{page_index}页: upsert {len(batch_rows)} 条")
             except Exception as e:
-                logger.warning(f"写入contacts失败 wechat_id={friend_wechat_id}: {e}")
+                logger.error(f"  第{page_index}页 batch upsert失败: {e}")
+                # 降级为逐条upsert
+                for row in batch_rows:
+                    try:
+                        supabase.table('contacts').upsert(
+                            row,
+                            on_conflict='wechat_id,sales_wechat_id'
+                        ).execute()
+                        upsert_count += 1
+                    except Exception as e2:
+                        logger.warning(
+                            f"写入contacts失败 wechat_id={row.get('wechat_id')}: {e2}"
+                        )
 
         page_index += 1
         time.sleep(2)
 
     logger.info(
-        f"  {wechat_id}: 总好友{total}, 新增{new_count}, "
-        f"更新{update_count}, 已删除{deleted_count}"
+        f"  {wechat_id}: 总好友{total}, upsert成功{upsert_count}, "
+        f"已删除标记{deleted_count}"
     )
-    return total, new_count, update_count, deleted_count
+    return total, upsert_count, deleted_count
 
 
 def main():
@@ -219,19 +227,17 @@ def main():
     logger.info("开始同步云客好友列表")
 
     grand_total = 0
-    grand_new = 0
-    grand_update = 0
+    grand_upsert = 0
     grand_deleted = 0
 
     for wechat_id in SALES_WECHAT_IDS:
-        total, new_c, update_c, deleted_c = sync_friends_for_sales(wechat_id)
+        total, upsert_c, deleted_c = sync_friends_for_sales(wechat_id)
         grand_total += total
-        grand_new += new_c
-        grand_update += update_c
+        grand_upsert += upsert_c
         grand_deleted += deleted_c
         time.sleep(3)
 
-    logger.info(f"同步完成: 总{grand_total}, 新增{grand_new}, 更新{grand_update}, 已删除{grand_deleted}")
+    logger.info(f"同步完成: 总{grand_total}, upsert成功{grand_upsert}, 已删除标记{grand_deleted}")
     logger.info("=" * 50)
 
 
