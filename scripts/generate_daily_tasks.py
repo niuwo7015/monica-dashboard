@@ -100,6 +100,12 @@ def fetch_last_messages_for_sales(sales_wechat_id):
     """
     # 查询该销售的私聊消息（room_id为空=私聊）
     # 按sent_at降序，取最近的消息
+    sales_id = _get_sales_id(sales_wechat_id)
+    if not sales_id:
+        # 该销售没有users表映射（无email），无法查chat_messages
+        logger.warning(f"  {sales_wechat_id}: 无users表映射，跳过chat_messages查询")
+        return {}
+
     all_msgs = []
     page_size = 1000
     offset = 0
@@ -108,7 +114,7 @@ def fetch_last_messages_for_sales(sales_wechat_id):
         result = supabase.table('chat_messages').select(
             'wechat_id, sender_type, sent_at'
         ).eq(
-            'sales_id', _get_sales_id(sales_wechat_id)
+            'sales_id', sales_id
         ).is_('room_id', 'null').order(
             'sent_at', desc=True
         ).range(offset, offset + page_size - 1).execute()
