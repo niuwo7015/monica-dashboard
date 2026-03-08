@@ -6,3 +6,12 @@
 
 # 每天早上7:30同步好友列表
 30 7 * * * cd /home/admin/monica-scripts && python3 yunke_pull_friends.py >> /var/log/monica/pull_friends.log 2>&1
+
+# S-003: 每天早上6:00生成每日跟进任务
+0 6 * * * cd /home/admin/monica-scripts && python3 generate_daily_tasks.py >> /var/log/monica/generate_tasks.log 2>&1
+
+# S-006: 每天早上8:00推送飞书每日任务汇总
+0 8 * * * cd /home/admin/monica-scripts && python3 feishu_notify.py >> /var/log/monica/feishu_notify.log 2>&1
+
+# S-006: 每天中午12:00同步飞书订单数据
+0 12 * * * cd /home/admin/monica-scripts && python3 feishu_sync_orders.py >> /var/log/monica/feishu_sync_orders.log 2>&1
