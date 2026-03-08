@@ -8,15 +8,6 @@
 
 ## 待决策
 
-### PQ-001: contacts表数据量严重不足（2026-03-08）
-
-- **发现**：contacts表只有119条记录，分布在6个销售号（每个12-24条）
-- **预期**：decisions-v11记录~13,000+，pull_friends日志显示处理了13,850个好友
-- **影响**：Phase 1规则引擎依赖contacts表做全量扫描，119条无法覆盖实际客户群
-- **需要决策**：
-  1. 是否需要排查yunke_pull_friends.py的写入逻辑？
-  2. 排查前是否暂停pull_friends cron避免覆盖现场？
-
 ### PQ-002: backfill群聊历史数据不完整（2026-03-08）
 
 - **发现**：backfill在群 `44769956465@chatroom` 上因"时间格式有误"卡死
@@ -29,4 +20,8 @@
 
 ## 已解决
 
-（暂无）
+### PQ-001: contacts表数据量严重不足 → M-019已修复（2026-03-08）
+
+- **根因**：supabase-py v2的SELECT查询在HTTP/2连接复用下返回错误结果，导致upsert逻辑永远走UPDATE分支
+- **修复**：用batch `.upsert(on_conflict)` 替代 `GET+INSERT/UPDATE`
+- **结果**：contacts从119条恢复到13,826条
