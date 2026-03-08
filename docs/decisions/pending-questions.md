@@ -20,6 +20,18 @@
 
 ## 已解决
 
+### PQ-004: daily_tasks表增加wechat_id字段 → S-003已执行（2026-03-08）
+
+- **决策**：同意给daily_tasks表增加contact_wechat_id和sales_wechat_id字段
+- **执行**：ALTER TABLE已在Supabase SQL Editor执行，索引已创建
+- **验证**：generate_daily_tasks.py dry-run通过，9,842条任务正确生成
+
+### PQ-003: 用wechat_id作为关联键 → S-003已落地（2026-03-08）
+
+- **决策**：规则引擎用wechat_id作为关联键，不依赖customer_id
+- **执行**：generate_daily_tasks.py基于contacts.wechat_id + chat_messages关联，不依赖customer_id
+- **验证**：dry-run成功覆盖9,843个contacts（排除群聊的非删除好友）
+
 ### PQ-001: contacts表数据量严重不足 → M-019已修复（2026-03-08）
 
 - **根因**：supabase-py v2的SELECT查询在HTTP/2连接复用下返回错误结果，导致upsert逻辑永远走UPDATE分支
