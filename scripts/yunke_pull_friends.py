@@ -57,7 +57,7 @@ def make_sign(timestamp_ms):
 
 
 def pull_friends_page(wechat_id, page_index=1):
-    """拉取一页好友列表（pageIndex分页）"""
+    """拉取一页好友列表（page分页）"""
     timestamp_ms = str(int(time.time() * 1000))
     sign = make_sign(timestamp_ms)
 
@@ -73,7 +73,7 @@ def pull_friends_page(wechat_id, page_index=1):
         'wechatId': wechat_id,
         'userId': PARTNER_ID,
         'timestamp': timestamp_ms,
-        'pageIndex': page_index,
+        'page': page_index,  # API实际使用page而非pageIndex
     }
 
     url = f"{API_BASE}/open/wechat/friends"
