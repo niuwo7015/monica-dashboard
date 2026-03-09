@@ -187,7 +187,16 @@ def build_row(msg):
     talker = msg.get("talker", "")
     is_mine = msg.get("mine", False)
     room_id = msg.get("roomid") or msg.get("oriTalker") or None
-    msg_type = msg.get("type", 0)
+    # msg_type: 统一为数字（API可能返回字符串如"text"/"image"等）
+    msg_type_map = {
+        'text': 1, 'image': 2, 'voice': 3, 'video': 4,
+        'emoticon': 8, 'file': 9, 'link': 10, 'system': 15, 'quote': 21,
+    }
+    raw_type = msg.get("type", 0)
+    if isinstance(raw_type, str):
+        msg_type = msg_type_map.get(raw_type.lower(), 0)
+    else:
+        msg_type = int(raw_type)
     timestamp_ms = msg.get("timestamp", 0)
     msg_svr_id = msg.get("msgSvrId", "")
 
@@ -199,8 +208,11 @@ def build_row(msg):
     if is_group and not room_id:
         room_id = talker
 
-    # sender_type
-    sender_type = "sales" if is_mine else "customer"
+    # sender_type: 双重验证 — mine字段 + wechat_id是否是销售号
+    if is_mine or talker in SALES_WECHAT_IDS or talker == sales_wxid:
+        sender_type = "sales"
+    else:
+        sender_type = "customer"
 
     # wechat_id: 私聊=对方微信ID，群聊=talker(可能是群ID也可能是发言者)
     wechat_id = talker
