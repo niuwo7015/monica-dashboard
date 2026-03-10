@@ -139,7 +139,7 @@ def call_allrecords(timestamp_ms):
     for attempt in range(MAX_RETRIES):
         precise_sleep()
         headers = make_headers()
-        body = {"timestamp": str(int(time.time() * 1000)), "createTimestamp": timestamp_ms}
+        body = {"timestamp": int(timestamp_ms)}
 
         try:
             _last_call_time = time.time()
