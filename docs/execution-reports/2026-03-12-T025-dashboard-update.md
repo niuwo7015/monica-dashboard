@@ -2,7 +2,7 @@
 
 **日期**: 2026-03-12
 **任务代号**: T-025
-**状态**: 已完成，已推送到main触发Vercel部署
+**状态**: 已完成，Vercel生产部署已验证
 
 ---
 
@@ -23,10 +23,10 @@
 - **按成交**:
   - 每层只算选定时间内发生的动作
   - 加微信: add_time在范围内
-  - 有对话: chat_messages在范围内的distinct客户（排除is_system_msg）
-  - 已报价: 有对话的客户中has_quote=true
-  - 付定金: orders中product_line含"订金/意向金"或amount=1000
-  - 成交: orders中amount>1000
+  - 有对话: RPC dashboard_funnel_conversations
+  - 已报价: contacts with has_quote=true AND add_time在范围内
+  - 付定金: orders.order_stage IN ('deposit','won')
+  - 成交: orders.order_stage = 'won'
 - toggle样式沿用FilterBar的pill风格（rgba(232,196,124,0.15)选中态）
 
 ### 3. 漏斗总转化率
@@ -37,8 +37,8 @@
 
 ### 4. 沉默预警Top10
 - 从5条扩展到10条
-- 数据源: chat_messages直接查询最后互动时间（排除is_system_msg=true）
-- 排除: 已成交客户（orders表amount>1000），销售微信号
+- 数据源: RPC dashboard_last_messages 查询最后互动时间（排除is_system_msg=true）
+- 排除: 已成交客户（orders.order_stage='won'），销售微信号（SALES_LIST）
 - 颜色阈值: >60天 #E85D5D, >30天 #E8C47C, 其他 rgba(255,255,255,0.4)
 - 标题改为"沉默预警 · Top10"
 
@@ -49,12 +49,13 @@
 - 本周>上周红色，反之绿色
 
 ### 6. 真实数据接入
-- 覆盖率: daily_tasks表，今日done vs pending + RPC dashboard_coverage
-- 漏斗: contacts + chat_messages + orders联查（双模式）
-- 业绩: orders表按order_date筛选，deposit/won用product_line+amount判断
+- 覆盖率: daily_tasks表，今日done vs pending + RPC dashboard_coverage（fallback到contacts全量计数）
+- 漏斗: contacts + RPC dashboard_funnel_conversations + orders联查（双模式）
+- 业绩: orders表按order_date筛选，deposit/won用order_stage字段判断
 - 销售跟进: daily_tasks按sales_wechat_id分组
-- 风险信号: chat_messages + RPC dashboard_last_messages
+- 风险信号: contacts(has_quote优先) + RPC dashboard_last_messages
 - 销售名映射: SALES_LIST from theme.js
+- 排除规则: won客户排除出风险信号，SALES_IDS排除出客户统计
 
 ### 7. 设计语言更新
 - 背景 #111110, 主色 #E8C47C, 成功 #6BCB77, 危险 #E85D5D
@@ -73,12 +74,38 @@
 - `frontend/src/pages/Dashboard.jsx` — UI层重构
 
 ## 部署
-- Git commit: edea1ac
-- 已push到main分支，Vercel自动部署
+- Git commits: edea1ac (UI), fea047b (vercel.json SPA routing), 3c1415c (DB schema fix)
+- 手动Vercel CLI部署（`vercel deploy --prod`，项目 monica-crm）
 - 访问地址: https://monica-crm-eta.vercel.app/dashboard
+- 别名: https://www.monicamocca.com
 
-## 待确认事项
-- Supabase RPC函数（dashboard_coverage, dashboard_funnel_conversations, dashboard_last_messages）是否已部署
-  - 未部署时自动fallback到直接查询，功能不受影响
-- orders表product_line字段是否包含"订金/意向金"关键词
-  - 如果product_line不含这些关键词，付定金层仅靠amount=1000判断
+## 数据库Schema修正（3c1415c）
+发现SQL定义文件 s006_orders_table.sql 与实际线上表结构不一致：
+- `customer_wechat_id` → 实际为 `wechat_id`
+- `sales_wechat_id` → 实际为 `sales_id`（UUID类型，非微信号）
+- `product_line` → 实际为 `product`
+- `order_status` → 实际为 `order_stage`（值域: 'deposit', 'won'）
+- 额外字段: `deposit`, `balance`, `payment_status`, `delivery_status`, `feishu_record_id`, `notes`
+
+## API验证结果（2026-03-12）
+| 查询 | HTTP | 数据 |
+|------|------|------|
+| orders (wechat_id, amount, order_stage, product) | 200 | 772 won + 188 deposit |
+| contacts (active, non-deleted) | 200 | 9,882 条 |
+| contacts (has_quote=true) | 200 | 1,331 条 |
+| daily_tasks (today) | 200 | 3,378 条 |
+| RPC dashboard_coverage | 500 | 超时(57014) → fallback生效 |
+| RPC dashboard_funnel_conversations | 200 | 正常 |
+| RPC dashboard_last_messages | 200 | 正常 |
+
+## 数据分布说明
+- 30天内新增联系人: 0条（所有contacts.add_time都早于30天前）
+  - 影响: 漏斗"按获客"视角在30天范围内显示added=0（全零）
+  - 解决: 用户切换到更长时间范围可看到数据
+- 30天内订单: 32条
+- 总订单金额(won): ~870万元
+
+## 已知限制
+1. **dashboard_coverage RPC超时**: chat_messages全表扫描导致，已有fallback（用contacts总数代替）。需优化SQL或加索引。见PQ-008。
+2. **Sales breakdown不可用**: orders.sales_id是UUID，无法映射到SALES_LIST的wechatId。需要sales_id→wechat_id的映射表。
+3. **Vercel未连接Git**: 每次更新需手动`vercel deploy --prod`，不会自动部署。

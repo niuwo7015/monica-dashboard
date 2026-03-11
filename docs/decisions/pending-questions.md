@@ -8,6 +8,30 @@
 
 ## 待决策
 
+### PQ-008: rpc/dashboard_coverage 函数超时（2026-03-12，API验证）
+
+**背景**: 对 Supabase API 进行连通性验证时，`rpc/dashboard_coverage` 返回 HTTP 500，错误码 PostgreSQL 57014（statement timeout）。其余4个查询（orders、contacts、daily_tasks、orders count）均正常返回 200。
+
+**现象**:
+- 错误信息：`{"code":"57014","message":"canceling statement due to statement timeout"}`
+- 函数已部署（见 PQ-007 已解决记录），但执行时超时
+
+**可能原因**:
+1. 函数内部SQL做了全表扫描（chat_messages、contacts 数据量大），缺少合适索引
+2. Supabase anon 角色的 `statement_timeout` 设置过短
+3. 函数逻辑本身复杂度过高，需要拆分或缓存
+
+**待决策**:
+1. 是否需要优化 `dashboard_coverage()` 函数的 SQL 查询（加索引、缩小扫描范围）？
+2. 是否允许调高 anon 角色的 statement_timeout？（需 Supabase Dashboard 操作）
+3. 如果函数无法在 timeout 内完成，是否考虑改用预聚合表（materialized view 或定时写入汇总表）？
+
+**影响**: Dashboard 覆盖率模块无法正常加载数据。
+
+**详情**: API验证 curl 测试，2026-03-12
+
+---
+
 ### PQ-005: 是否启动按好友历史聊天回补？（2026-03-09，S-004）
 
 **背景**: S-004探索确认records接口支持按个人好友拉取历史聊天记录（日期字符串格式），限流2秒/次。
