@@ -1,7 +1,7 @@
 # CLAUDE.md — Monica销售AI系统
 
 > Agent Teams lead 和所有 teammates 必须遵守本文件。
-> 最后更新：2026-03-07
+> 最后更新：2026-03-12
 
 ---
 
@@ -38,30 +38,47 @@ frontend/                # SalesToday前端
 - 涉及Monica审批的流程变更
 - 成本超过预期的技术方案
 - 任何不确定的业务逻辑
+- **任何涉及生产数据源的写入操作**（飞书表格、Supabase生产表等）
 
 ## 服务器信息
 
-- 阿里云：119.23.44.77（admin用户，SSH密钥已配置）
-- SSH连接：ssh -i ~/.ssh/aliyun_jst admin@119.23.44.77
+- 阿里云：119.23.44.77（admin用户，SSH密钥 `~/.ssh/aliyun_jst`）
 - 脚本目录：/home/admin/monica-scripts/
 - 日志目录：/var/log/monica/
-- 数据库：Supabase（新加坡），URL见环境变量
+- 环境变量：/home/admin/monica-scripts/.env
+- 数据库：Supabase（新加坡），项目ID: dieeejjzbhkpgxdhwlxf
 - GitHub：niuwo7015/monica-dashboard
 
 ## 云客API使用规则（严格遵守）
 
-- 调用间隔 ≥ 8秒，建议10秒
+- **API到期日：2027-03-20**（已续费1年）
+- 调用间隔 ≥ 5秒（allRecords实测5秒可行，留余量用5.5秒）
 - 同一时间只能有一个脚本在调云客API
 - 被限流时：sleep(60)后重试，不要缩短间隔
 - 限流返回特征："请勿频繁操作"
-- allRecords不返回群聊客户文本，群聊用records接口
+- **allRecords包含群聊消息（含mine=false），但不完整（丢失约39%）**
+- 群聊完整数据需用records接口逐群补拉
 - API数据保留约6个月
+- timestamp参数：13位毫秒时间戳，需小于当前时间30分钟
+
+## 数据关联规则（严格遵守）
+
+- **全链路用 sales_wechat_id 关联，不用 sales_id**（sales_id在多个表中为NULL）
+- 群聊/私聊判断：用 `room_id LIKE '%@chatroom%'`，不用 `room_id IS NOT NULL`（room_id有污染）
+- chat_messages有 `is_system_msg` 字段，查最后消息时必须过滤 `is_system_msg = false`
+- 去重用 msg_svr_id 做唯一索引
+
+## 飞书应用权限规则
+
+- **只开读取权限**：sheets:spreadsheet:readonly + wiki:wiki:readonly
+- **写入权限必须关闭**：sheets:spreadsheet 已关闭
+- 任何涉及生产数据源的写入操作需Woniu明确确认
 
 ## 代码规范
 
 - Python脚本：蛇形命名，yunke_前缀
 - 数据库字段：蛇形英文，前端中文显示
-- 所有任务带代号编号（M-XXX），方便追踪
+- 所有任务带代号编号（T-XXX），方便追踪
 - commit message包含任务代号
 - 改完代码先push到GitHub，再部署到服务器
 
