@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════
-   T-022: Dashboard Data Queries
+   T-025: Dashboard Data Queries
    数据看板 Supabase 查询层
    ═══════════════════════════════════════ */
 
@@ -15,7 +15,7 @@ export const TIME_PRESETS = [
   { key: '30d', label: '30天' },
   { key: 'month', label: '本月' },
   { key: 'lastMonth', label: '上月' },
-  { key: 'all', label: '全部' },
+  { key: 'custom', label: '自定义' },
 ]
 
 export function computeDateRange(preset, customStart, customEnd) {
@@ -40,12 +40,10 @@ export function computeDateRange(preset, customStart, customEnd) {
       const last = new Date(today.getFullYear(), today.getMonth(), 0)
       return { start: fmtDate(first), end: fmtDate(last) }
     }
-    case 'all':
-      return { start: null, end: null }
     case 'custom':
       return { start: customStart || null, end: customEnd || null }
     default:
-      return { start: null, end: null }
+      return { start: fmtDate(daysAgo(today, 29)), end: fmtDate(today) }
   }
 }
 
@@ -59,12 +57,13 @@ function fmtDate(d) {
   return d.toISOString().split('T')[0]
 }
 
+const SALES_IDS = new Set(SALES_LIST.map(s => s.wechatId))
+
 // ─── 1. Coverage Stats ───
 
 export async function fetchCoverageStats() {
   const today = fmtDate(new Date())
 
-  // Daily tasks stats (always works)
   const { data: tasks } = await supabase
     .from('daily_tasks')
     .select('id, status')
@@ -74,7 +73,6 @@ export async function fetchCoverageStats() {
   const tasksDone = allTasks.filter(t => t.status === 'done').length
   const tasksPending = allTasks.filter(t => t.status === 'pending').length
 
-  // Try RPC for precise coverage rate
   let totalActive = 0, followed7d = 0, rpcAvailable = false
   try {
     const { data, error } = await supabase.rpc('dashboard_coverage')
@@ -83,9 +81,8 @@ export async function fetchCoverageStats() {
       followed7d = data.followed_7d || 0
       rpcAvailable = true
     }
-  } catch (_) { /* RPC not deployed yet */ }
+  } catch (_) { /* RPC not deployed */ }
 
-  // Fallback: approximate from contacts + daily_tasks
   if (!rpcAvailable) {
     const { count: activeCount } = await supabase
       .from('contacts')
@@ -95,115 +92,169 @@ export async function fetchCoverageStats() {
       .not('earliest_message_at', 'is', null)
 
     totalActive = activeCount || 0
-    // Approximate followed_7d from daily_tasks completion
     followed7d = tasksDone
   }
 
   const coveragePct = totalActive > 0 ? Math.round((followed7d / totalActive) * 100) : 0
 
-  return {
-    coveragePct,
-    totalActive,
-    followed7d,
-    tasksDone,
-    tasksPending,
-    rpcAvailable,
-  }
+  return { coveragePct, totalActive, followed7d, tasksDone, tasksPending, rpcAvailable }
 }
 
-// ─── 2. Funnel Stats ───
+// ─── 2a. Funnel — 按获客 (cohort-based) ───
+// 分母=选定时间内add_time的客户，追踪这批人最终走到哪一步
 
-export async function fetchFunnelStats(dateRange) {
+export async function fetchFunnelByAcquisition(dateRange) {
   const { start, end } = dateRange
+  if (!start) return { added: 0, conversation: 0, quote: 0, deposit: 0, won: 0 }
 
-  // 加微信 — contacts.add_time in range
-  let addedQuery = supabase
+  // Cohort: contacts added in range
+  const { data: cohortData } = await supabase
+    .from('contacts')
+    .select('wechat_id')
+    .eq('is_deleted', 0)
+    .eq('friend_type', 1)
+    .gte('add_time', start)
+    .lte('add_time', end + 'T23:59:59')
+
+  const cohortIds = (cohortData || []).map(c => c.wechat_id)
+  const added = cohortIds.length
+  if (added === 0) return { added: 0, conversation: 0, quote: 0, deposit: 0, won: 0 }
+
+  // 有对话: cohort members with any non-system private messages (ever)
+  let conversationCount = 0
+  try {
+    const { data, error } = await supabase.rpc('dashboard_funnel_conversations', {
+      p_start: start, p_end: end,
+    })
+    if (!error && data !== null) conversationCount = data
+  } catch (_) {
+    // Fallback: contacts in cohort with earliest_message_at
+    const { count } = await supabase
+      .from('contacts')
+      .select('*', { count: 'exact', head: true })
+      .in('wechat_id', cohortIds)
+      .not('earliest_message_at', 'is', null)
+    conversationCount = count || 0
+  }
+
+  // 已报价: cohort members with has_quote = true (ever)
+  let quoteCount = 0
+  try {
+    const { count, error } = await supabase
+      .from('contacts')
+      .select('*', { count: 'exact', head: true })
+      .in('wechat_id', cohortIds)
+      .eq('has_quote', true)
+    if (!error) quoteCount = count || 0
+  } catch (_) {}
+
+  // 付定金: cohort members with deposit-like orders (ever)
+  let depositCount = 0
+  try {
+    const { data: depOrders } = await supabase
+      .from('orders')
+      .select('customer_wechat_id')
+      .in('customer_wechat_id', cohortIds)
+      .or('product_line.ilike.%订金%,product_line.ilike.%意向金%,amount.eq.1000')
+    depositCount = new Set((depOrders || []).map(o => o.customer_wechat_id)).size
+  } catch (_) {}
+
+  // 成交: cohort members with orders amount > 1000 (ever)
+  let wonCount = 0
+  try {
+    const { data: wonOrders } = await supabase
+      .from('orders')
+      .select('customer_wechat_id')
+      .in('customer_wechat_id', cohortIds)
+      .gt('amount', 1000)
+    wonCount = new Set((wonOrders || []).map(o => o.customer_wechat_id)).size
+  } catch (_) {}
+
+  return { added, conversation: conversationCount, quote: quoteCount, deposit: depositCount, won: wonCount }
+}
+
+// ─── 2b. Funnel — 按成交 (period-based) ───
+// 每层只算选定时间内发生的动作
+
+export async function fetchFunnelByTransaction(dateRange) {
+  const { start, end } = dateRange
+  if (!start) return { added: 0, conversation: 0, quote: 0, deposit: 0, won: 0 }
+
+  // 加微信: contacts.add_time in range
+  const { count: addedCount } = await supabase
     .from('contacts')
     .select('*', { count: 'exact', head: true })
     .eq('is_deleted', 0)
     .eq('friend_type', 1)
-  if (start) addedQuery = addedQuery.gte('add_time', start)
-  if (end) addedQuery = addedQuery.lte('add_time', end + 'T23:59:59')
-  const { count: addedCount } = await addedQuery
+    .gte('add_time', start)
+    .lte('add_time', end + 'T23:59:59')
 
-  // 有对话 — try RPC, fallback to approximate
-  let conversationCount = 0
+  // 有对话: distinct contacts with non-system private chat_messages in range
+  let conversationIds = new Set()
   try {
-    const { data, error } = await supabase.rpc('dashboard_funnel_conversations', {
-      p_start: start || null,
-      p_end: end || null,
+    const { data: convMsgs } = await supabase
+      .from('chat_messages')
+      .select('wechat_id')
+      .eq('is_system_msg', false)
+      .or('room_id.is.null,room_id.not.like.%@chatroom%')
+      .gte('sent_at', start + 'T00:00:00')
+      .lte('sent_at', end + 'T23:59:59')
+      .limit(50000)
+    ;(convMsgs || []).forEach(m => {
+      if (!SALES_IDS.has(m.wechat_id)) conversationIds.add(m.wechat_id)
     })
-    if (!error && data !== null) {
-      conversationCount = data
-    }
-  } catch (_) {
-    // Fallback: contacts with earliest_message_at in range
-    let fallbackQuery = supabase
-      .from('contacts')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_deleted', 0)
-      .eq('friend_type', 1)
-      .not('earliest_message_at', 'is', null)
-    if (start) fallbackQuery = fallbackQuery.gte('add_time', start)
-    if (end) fallbackQuery = fallbackQuery.lte('add_time', end + 'T23:59:59')
-    const { count } = await fallbackQuery
-    conversationCount = count || 0
+  } catch (_) {}
+
+  // 已报价: contacts with conversation in range AND has_quote = true
+  let quoteCount = 0
+  if (conversationIds.size > 0) {
+    try {
+      const convArray = [...conversationIds]
+      const { count, error } = await supabase
+        .from('contacts')
+        .select('*', { count: 'exact', head: true })
+        .in('wechat_id', convArray.slice(0, 500))
+        .eq('has_quote', true)
+      if (!error) quoteCount = count || 0
+      // Handle remaining batches if >500
+      if (convArray.length > 500) {
+        const { count: c2 } = await supabase
+          .from('contacts')
+          .select('*', { count: 'exact', head: true })
+          .in('wechat_id', convArray.slice(500, 1000))
+          .eq('has_quote', true)
+        quoteCount += c2 || 0
+      }
+    } catch (_) {}
   }
 
-  // 已报价 — contacts.has_quote = true
-  let quoteCount = 0
+  // 付定金: orders in range with deposit criteria
+  let depositCount = 0
   try {
-    let quoteQuery = supabase
-      .from('contacts')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_deleted', 0)
-      .eq('friend_type', 1)
-      .eq('has_quote', true)
-    if (start) quoteQuery = quoteQuery.gte('add_time', start)
-    if (end) quoteQuery = quoteQuery.lte('add_time', end + 'T23:59:59')
-    const { count, error } = await quoteQuery
-    if (!error) quoteCount = count || 0
-  } catch (_) { /* has_quote column doesn't exist yet */ }
+    const { data: depOrders } = await supabase
+      .from('orders')
+      .select('customer_wechat_id')
+      .gte('order_date', start)
+      .lte('order_date', end)
+      .or('product_line.ilike.%订金%,product_line.ilike.%意向金%,amount.eq.1000')
+    depositCount = new Set((depOrders || []).map(o => o.customer_wechat_id)).size
+  } catch (_) {}
 
-  // 付定金 + 成交 — from orders table
-  let depositCount = 0, wonCount = 0
+  // 成交: orders in range with amount > 1000
+  let wonCount = 0
   try {
-    // Try order_stage first (planned schema)
-    let depositQuery = supabase
+    const { data: wonOrders } = await supabase
       .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('order_stage', 'deposit')
-    if (start) depositQuery = depositQuery.gte('order_date', start)
-    if (end) depositQuery = depositQuery.lte('order_date', end)
-    const { count: dc, error: de } = await depositQuery
-
-    let wonQuery = supabase
-      .from('orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('order_stage', 'won')
-    if (start) wonQuery = wonQuery.gte('order_date', start)
-    if (end) wonQuery = wonQuery.lte('order_date', end)
-    const { count: wc, error: we } = await wonQuery
-
-    if (!de) depositCount = dc || 0
-    if (!we) wonCount = wc || 0
-
-    // If order_stage doesn't exist, fallback: count all completed orders as "won"
-    if (de && de.code === '42703') {
-      let allOrdersQuery = supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
-        .eq('order_status', 'completed')
-      if (start) allOrdersQuery = allOrdersQuery.gte('order_date', start)
-      if (end) allOrdersQuery = allOrdersQuery.lte('order_date', end)
-      const { count } = await allOrdersQuery
-      wonCount = count || 0
-    }
-  } catch (_) { /* orders table issue */ }
+      .select('customer_wechat_id')
+      .gte('order_date', start)
+      .lte('order_date', end)
+      .gt('amount', 1000)
+    wonCount = new Set((wonOrders || []).map(o => o.customer_wechat_id)).size
+  } catch (_) {}
 
   return {
     added: addedCount || 0,
-    conversation: conversationCount,
+    conversation: conversationIds.size,
     quote: quoteCount,
     deposit: depositCount,
     won: wonCount,
@@ -217,26 +268,25 @@ export async function fetchPerformanceStats(dateRange) {
 
   let query = supabase
     .from('orders')
-    .select('amount, sales_wechat_id, customer_wechat_id, order_date, order_status, order_stage')
+    .select('amount, sales_wechat_id, customer_wechat_id, order_date, product_line')
 
   if (start) query = query.gte('order_date', start)
   if (end) query = query.lte('order_date', end)
 
   const { data: orders, error } = await query
 
-  // If order_stage column doesn't exist, retry without it
   let orderList = orders || []
-  if (error && error.code === '42703') {
+  if (error) {
+    // Retry without product_line if column doesn't exist
     let retryQuery = supabase
       .from('orders')
-      .select('amount, sales_wechat_id, customer_wechat_id, order_date, order_status')
+      .select('amount, sales_wechat_id, customer_wechat_id, order_date')
     if (start) retryQuery = retryQuery.gte('order_date', start)
     if (end) retryQuery = retryQuery.lte('order_date', end)
     const { data } = await retryQuery
     orderList = data || []
   }
 
-  // Total
   const totalAmount = orderList.reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0)
   const totalOrders = orderList.length
 
@@ -255,21 +305,21 @@ export async function fetchPerformanceStats(dateRange) {
     .filter(s => s.count > 0)
     .sort((a, b) => b.amount - a.amount)
 
-  // Deposit → Won conversion: customers who have both stages
-  let depositToWonRate = null
-  const stageField = orderList[0]?.order_stage !== undefined ? 'order_stage' : null
-  if (stageField) {
-    const depositCustomers = new Set(
-      orderList.filter(o => o[stageField] === 'deposit').map(o => o.customer_wechat_id)
-    )
-    const wonCustomers = new Set(
-      orderList.filter(o => o[stageField] === 'won').map(o => o.customer_wechat_id)
-    )
-    const convertedCount = [...depositCustomers].filter(c => wonCustomers.has(c)).length
-    depositToWonRate = depositCustomers.size > 0
-      ? Math.round((convertedCount / depositCustomers.size) * 100)
-      : null
-  }
+  // Deposit → Won conversion
+  const depositCustomers = new Set(
+    orderList.filter(o => {
+      const amt = parseFloat(o.amount)
+      const pl = (o.product_line || '').toLowerCase()
+      return amt === 1000 || pl.includes('订金') || pl.includes('意向金')
+    }).map(o => o.customer_wechat_id)
+  )
+  const wonCustomers = new Set(
+    orderList.filter(o => parseFloat(o.amount) > 1000).map(o => o.customer_wechat_id)
+  )
+  const convertedCount = [...depositCustomers].filter(c => wonCustomers.has(c)).length
+  const depositToWonRate = depositCustomers.size > 0
+    ? Math.round((convertedCount / depositCustomers.size) * 100)
+    : null
 
   return { totalAmount, totalOrders, salesBreakdown, depositToWonRate }
 }
@@ -300,35 +350,43 @@ export async function fetchSalesFollowUp() {
   return Object.values(salesMap).filter(s => s.total > 0)
 }
 
-// ─── 5. Risk Signals ───
+// ─── 5. Risk Signals + Silence WoW ───
+// 数据源: chat_messages 算最后互动时间
+// 排除: 已成交客户 (orders amount > 1000), 销售微信号
 
-export async function fetchRiskSignals() {
-  const today = fmtDate(new Date())
+export async function fetchRiskAndSilence() {
+  // Get won customer IDs
+  let wonCustomerIds = new Set()
+  try {
+    const { data: wonOrders } = await supabase
+      .from('orders')
+      .select('customer_wechat_id')
+      .gt('amount', 1000)
+    ;(wonOrders || []).forEach(o => wonCustomerIds.add(o.customer_wechat_id))
+  } catch (_) {}
 
-  // Get reactivate tasks (R3) sorted by priority (silence_days embedded in trigger_rule)
-  const { data: riskTasks } = await supabase
-    .from('daily_tasks')
-    .select('contact_wechat_id, sales_wechat_id, trigger_rule, priority, status')
-    .eq('task_date', today)
-    .eq('task_type', 'reactivate')
-    .order('priority', { ascending: false })
-    .limit(10)
-
-  if (!riskTasks || riskTasks.length === 0) return []
-
-  // Get contact names
-  const contactIds = [...new Set(riskTasks.map(t => t.contact_wechat_id))]
+  // Get all active contacts with prior conversations
   const { data: contacts } = await supabase
     .from('contacts')
     .select('wechat_id, nickname, remark, contact_tag, sales_wechat_id')
-    .in('wechat_id', contactIds)
+    .eq('is_deleted', 0)
+    .eq('friend_type', 1)
+    .not('earliest_message_at', 'is', null)
 
+  // Exclude won customers and sales wechat IDs
+  const eligible = (contacts || []).filter(c =>
+    !wonCustomerIds.has(c.wechat_id) && !SALES_IDS.has(c.wechat_id)
+  )
+
+  if (eligible.length === 0) {
+    return { riskSignals: [], silenceThisWeek: 0, silenceLastWeek: 0 }
+  }
+
+  const contactIds = eligible.map(c => c.wechat_id)
   const contactMap = {}
-  ;(contacts || []).forEach(c => {
-    contactMap[c.wechat_id] = c
-  })
+  eligible.forEach(c => { contactMap[c.wechat_id] = c })
 
-  // Get last messages — try RPC first
+  // Get last non-system private message per contact
   let msgMap = {}
   try {
     const { data: msgs, error } = await supabase.rpc('dashboard_last_messages', {
@@ -338,45 +396,51 @@ export async function fetchRiskSignals() {
       msgs.forEach(m => { msgMap[m.wechat_id] = m })
     }
   } catch (_) {
-    // Fallback: query last message per contact in parallel
-    const msgPromises = contactIds.map(async (id) => {
-      const { data } = await supabase
+    // Fallback: batch query
+    try {
+      const { data: recentMsgs } = await supabase
         .from('chat_messages')
-        .select('content, msg_content, sender_type, sent_at')
-        .eq('wechat_id', id)
+        .select('wechat_id, content, sender_type, sent_at')
         .eq('is_system_msg', false)
+        .or('room_id.is.null,room_id.not.like.%@chatroom%')
+        .in('wechat_id', contactIds.slice(0, 500))
         .order('sent_at', { ascending: false })
-        .limit(1)
-      if (data && data[0]) {
-        msgMap[id] = {
-          content: data[0].content || '[媒体消息]',
-          sender_type: data[0].sender_type,
-          sent_at: data[0].sent_at,
-        }
-      }
-    })
-    await Promise.all(msgPromises)
+        .limit(50000)
+      ;(recentMsgs || []).forEach(m => {
+        if (!msgMap[m.wechat_id]) msgMap[m.wechat_id] = m
+      })
+    } catch (_) {}
   }
 
-  // Combine
-  return riskTasks.map(task => {
-    const contact = contactMap[task.contact_wechat_id] || {}
-    const lastMsg = msgMap[task.contact_wechat_id]
-    const silenceMatch = task.trigger_rule?.match(/(\d+)天/)
-    const silenceDays = silenceMatch ? parseInt(silenceMatch[1]) : 0
-
-    const salesInfo = SALES_LIST.find(s => s.wechatId === task.sales_wechat_id)
-
+  // Calculate silence days and build risk list
+  const now = Date.now()
+  const allWithSilence = eligible.map(c => {
+    const lastMsg = msgMap[c.wechat_id]
+    const silenceDays = lastMsg?.sent_at
+      ? Math.floor((now - new Date(lastMsg.sent_at).getTime()) / 86400000)
+      : 999
+    const salesInfo = SALES_LIST.find(s => s.wechatId === c.sales_wechat_id)
     return {
-      contactName: contact.remark || contact.nickname || task.contact_wechat_id,
-      contactTag: contact.contact_tag,
+      contactName: c.remark || c.nickname || c.wechat_id,
+      contactTag: c.contact_tag,
       salesName: salesInfo?.name || '未知',
       silenceDays,
-      triggerRule: task.trigger_rule,
-      status: task.status,
       lastMessage: lastMsg?.content || null,
       lastMessageSender: lastMsg?.sender_type || null,
       lastMessageAt: lastMsg?.sent_at || null,
     }
-  }).sort((a, b) => b.silenceDays - a.silenceDays)
+  }).filter(c => c.silenceDays >= 14)
+
+  // Top 10 risk signals
+  const riskSignals = allWithSilence
+    .sort((a, b) => b.silenceDays - a.silenceDays)
+    .slice(0, 10)
+
+  // Silence WoW: newly silent >14d this week vs last week
+  // This week: last msg 14-20 days ago (crossed 14d threshold within 7 days)
+  // Last week: last msg 21-27 days ago
+  const silenceThisWeek = allWithSilence.filter(c => c.silenceDays >= 14 && c.silenceDays < 21).length
+  const silenceLastWeek = allWithSilence.filter(c => c.silenceDays >= 21 && c.silenceDays < 28).length
+
+  return { riskSignals, silenceThisWeek, silenceLastWeek }
 }
