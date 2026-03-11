@@ -80,7 +80,7 @@ MODELS = {
     },
     'sonnet': {
         'name': 'Claude Sonnet 4.6',
-        'model_id': 'claude-sonnet-4-6-20250217',
+        'model_id': 'claude-sonnet-4-6',
         'price_input': 3.00,
         'price_output': 15.00,
     },
