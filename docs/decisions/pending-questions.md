@@ -25,6 +25,19 @@
 
 ## 已解决
 
+### PQ-007: SQL函数部署到Supabase → 已执行（2026-03-12）
+
+- **执行**：通过 Supabase SQL Editor 执行 `sql/t022_dashboard_functions.sql`
+- **修复**：`msg_content` 列不存在，改用 `COALESCE(cm.content, '[媒体消息]')`
+- **结果**：3个函数 + 1个索引 + 3个GRANT 全部成功
+- **已部署函数**：`dashboard_coverage()`, `dashboard_funnel_conversations()`, `dashboard_last_messages()`
+
+### PQ-006: orders表字段名确认 → 已解决（2026-03-12）
+
+- **确认**：实际字段名为 `order_stage`，值域为 `'deposit'`（付定金）和 `'won'`（成交）
+- **SQL文件 s006 已过时**：s006中写的 `order_status` 不是当前线上字段
+- **前端处理**：Dashboard代码主路径直接用 `order_stage`，无需修改
+
 ### PQ-002: backfill群聊历史数据不完整（2026-03-08）→ 已决策（2026-03-09）
 
 - **决策**：Phase 1跳过群聊回补，不阻塞主线。但单独派任务深度调查群聊数据拉取方案。
