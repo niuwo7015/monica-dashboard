@@ -95,18 +95,11 @@ def fetch_last_messages_for_sales(sales_wechat_id):
     获取某个销售的所有私聊最后消息信息。
     返回 dict: {contact_wechat_id: {last_sent_at, last_sender_type, last_customer_msg_at, last_sales_msg_at}}
 
-    用RPC或分组查询比较理想，但Supabase REST API不支持GROUP BY。
-    折中方案：拉取该销售最近30天的消息，在内存中分组统计。
+    按sent_at desc分页拉取，边拉边统计，每个contact只需要最新的客户消息和销售消息。
+    当所有已见contact的stats都已完整（或达到上限）时提前结束。
     """
-    # 查询该销售的私聊消息（room_id为空=私聊）
-    # 按sent_at降序，取最近的消息
-    sales_id = _get_sales_id(sales_wechat_id)
-    if not sales_id:
-        # 该销售没有users表映射（无email），无法查chat_messages
-        logger.warning(f"  {sales_wechat_id}: 无users表映射，跳过chat_messages查询")
-        return {}
-
-    all_msgs = []
+    contact_stats = {}
+    incomplete = set()  # 还缺少customer或sales消息的wechat_id
     page_size = 1000
     offset = 0
 
@@ -114,79 +107,47 @@ def fetch_last_messages_for_sales(sales_wechat_id):
         result = supabase.table('chat_messages').select(
             'wechat_id, sender_type, sent_at'
         ).eq(
-            'sales_id', sales_id
-        ).is_('room_id', 'null').order(
+            'sales_wechat_id', sales_wechat_id
+        ).not_.like('room_id', '%@chatroom').order(
             'sent_at', desc=True
         ).range(offset, offset + page_size - 1).execute()
 
         if not result.data:
             break
 
-        all_msgs.extend(result.data)
+        for msg in result.data:
+            wid = msg.get('wechat_id')
+            if not wid:
+                continue
 
-        # 最多拉取5000条（覆盖最近30天应该足够）
-        if len(result.data) < page_size or len(all_msgs) >= 5000:
+            sent_at = msg.get('sent_at')
+            sender_type = msg.get('sender_type')
+
+            if wid not in contact_stats:
+                contact_stats[wid] = {
+                    'last_sent_at': sent_at,
+                    'last_sender_type': sender_type,
+                    'last_customer_msg_at': None,
+                    'last_sales_msg_at': None,
+                }
+                incomplete.add(wid)
+
+            stats = contact_stats[wid]
+
+            if sender_type == 'customer' and stats['last_customer_msg_at'] is None:
+                stats['last_customer_msg_at'] = sent_at
+            elif sender_type == 'sales' and stats['last_sales_msg_at'] is None:
+                stats['last_sales_msg_at'] = sent_at
+
+            # 两种sender_type都有了，该contact完整
+            if stats['last_customer_msg_at'] and stats['last_sales_msg_at']:
+                incomplete.discard(wid)
+
+        if len(result.data) < page_size:
             break
         offset += page_size
 
-    # 按wechat_id分组，统计最后消息
-    contact_stats = {}
-    for msg in all_msgs:
-        wid = msg.get('wechat_id')
-        if not wid:
-            continue
-
-        if wid not in contact_stats:
-            contact_stats[wid] = {
-                'last_sent_at': None,
-                'last_sender_type': None,
-                'last_customer_msg_at': None,
-                'last_sales_msg_at': None,
-            }
-
-        sent_at = msg.get('sent_at')
-        sender_type = msg.get('sender_type')
-
-        stats = contact_stats[wid]
-        # 第一条即为最新的（已按sent_at desc排序）
-        if stats['last_sent_at'] is None:
-            stats['last_sent_at'] = sent_at
-            stats['last_sender_type'] = sender_type
-
-        if sender_type == 'customer' and stats['last_customer_msg_at'] is None:
-            stats['last_customer_msg_at'] = sent_at
-        elif sender_type == 'sales' and stats['last_sales_msg_at'] is None:
-            stats['last_sales_msg_at'] = sent_at
-
     return contact_stats
-
-
-# 缓存 sales_wechat_id -> sales_id (UUID)
-_sales_id_cache = {}
-SALES_WECHAT_MAP = {
-    'wxid_am3kdib9tt3722': 'kexin@test.com',
-    'wxid_p03xoj66oss112': 'xiaojie@test.com',
-    'wxid_cbk7hkyyp11t12': 'xiaojian@test.com',
-}
-
-
-def _get_sales_id(sales_wechat_id):
-    """通过销售微信号获取UUID形式的sales_id"""
-    if sales_wechat_id in _sales_id_cache:
-        return _sales_id_cache[sales_wechat_id]
-
-    email = SALES_WECHAT_MAP.get(sales_wechat_id)
-    if not email:
-        return None
-
-    try:
-        result = supabase.table('users').select('id').eq('email', email).execute()
-        if result.data:
-            _sales_id_cache[sales_wechat_id] = result.data[0]['id']
-            return _sales_id_cache[sales_wechat_id]
-    except Exception as e:
-        logger.warning(f"查询sales_id失败: {e}")
-    return None
 
 
 def parse_iso_date(iso_str):
@@ -330,7 +291,6 @@ def generate_tasks(dry_run=False):
                     'contact_wechat_id': contact_wechat_id,
                     'sales_wechat_id': sales_wechat_id,
                     'customer_id': contact.get('customer_id'),
-                    'sales_id': _get_sales_id(sales_wechat_id),
                     'task_date': task_date_str,
                     'task_type': task['task_type'],
                     'trigger_rule': task['trigger_rule'],
