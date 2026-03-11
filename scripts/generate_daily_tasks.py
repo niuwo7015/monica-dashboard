@@ -7,10 +7,11 @@ S-003: Phase 1 规则引擎 — 生成每日跟进任务
 - 支持 --dry-run 模式（只输出不写库）
 
 规则逻辑（Phase 1）：
-  R1: 客户发了消息但销售未回复（≥1天） → urgent_reply, priority=10
-  R2: 最后一条是销售发的，客户沉默≥3天 → follow_up_silent, priority=5
-  R3: 有聊天记录但≥7天无任何互动 → reactivate, priority=3
-  R4: contacts中存在但从无聊天记录 → initial_contact, priority=1
+  前置过滤：只扫描有≥1条非系统消息聊天记录的客户（排除僵尸号）
+  R3: 有聊天记录但≥7天无任何互动 → reactivate, priority=3（最先检查，避免被R1/R2覆盖）
+  R1: 客户发了消息但销售未回复（1-6天） → urgent_reply, priority=10
+  R2: 最后一条是销售发的，客户沉默3-6天 → follow_up_silent, priority=5
+  R4: 暂停 — contacts中无聊天记录的僵尸号跳过，等add_time数据可用后恢复新客触达
 """
 
 import os
@@ -108,6 +109,8 @@ def fetch_last_messages_for_sales(sales_wechat_id):
             'wechat_id, sender_type, sent_at'
         ).eq(
             'sales_wechat_id', sales_wechat_id
+        ).eq(
+            'is_system_msg', False
         ).not_.like('room_id', '%@chatroom').order(
             'sent_at', desc=True
         ).range(offset, offset + page_size - 1).execute()
@@ -183,12 +186,8 @@ def apply_rules(contact, msg_stats, now):
     wechat_id = contact['wechat_id']
 
     if msg_stats is None:
-        # R4: 无聊天记录
-        tasks.append({
-            'task_type': 'initial_contact',
-            'trigger_rule': 'R4: 无聊天记录',
-            'priority': 1,
-        })
+        # R4: 无非系统消息聊天记录 → 跳过（僵尸号/供应商/同事）
+        # 暂不生成initial_contact任务，等add_time数据可用后可恢复新客触达
         return tasks
 
     last_sent_at = msg_stats.get('last_sent_at')
@@ -198,7 +197,17 @@ def apply_rules(contact, msg_stats, now):
 
     silence_days = days_since(last_sent_at, now)
 
-    # R1: 客户发了消息但销售未回复（最后一条是客户发的，且≥1天）
+    # R3: 有聊天记录但≥7天无任何互动 → 需要激活（优先于R1/R2，避免被覆盖）
+    # 超过7天的对话已经"冷掉"，不再是urgent_reply或follow_up，而是reactivate
+    if silence_days is not None and silence_days >= REACTIVATE_DAYS:
+        tasks.append({
+            'task_type': 'reactivate',
+            'trigger_rule': f'R3: {silence_days}天无互动',
+            'priority': 3,
+        })
+        return tasks
+
+    # R1: 客户发了消息但销售未回复（最后一条是客户发的，且≥1天，<7天）
     if last_sender_type == 'customer' and silence_days is not None and silence_days >= URGENT_REPLY_DAYS:
         # 确认销售确实没有在客户消息之后回复
         customer_dt = parse_iso_date(last_customer_msg_at)
@@ -211,22 +220,14 @@ def apply_rules(contact, msg_stats, now):
             })
             return tasks  # R1优先级最高，命中后不再匹配其他规则
 
-    # R2: 销售发了消息后客户沉默≥3天
+    # R2: 销售发了消息后客户沉默≥3天（<7天）
     if last_sender_type == 'sales' and silence_days is not None and silence_days >= FOLLOW_UP_SILENT_DAYS:
         tasks.append({
             'task_type': 'follow_up_silent',
             'trigger_rule': f'R2: 客户沉默{silence_days}天（销售已跟进）',
             'priority': 5,
         })
-        return tasks  # R2命中后不再匹配R3
-
-    # R3: 有聊天记录但≥7天无任何互动
-    if silence_days is not None and silence_days >= REACTIVATE_DAYS:
-        tasks.append({
-            'task_type': 'reactivate',
-            'trigger_rule': f'R3: {silence_days}天无互动',
-            'priority': 3,
-        })
+        return tasks
 
     return tasks
 
