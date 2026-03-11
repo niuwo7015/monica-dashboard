@@ -639,8 +639,8 @@ def generate_report():
 
     # --- 2. 50客户对比表 ---
     lines.append("\n## 2. 50客户诊断对比\n")
-    header = "| # | 客户 | 销售 | 层级 | 条数 |"
-    divider = "|---|---|---|---|---|"
+    header = "| # | wechat_id | 备注名 | 销售 | 层级 | 条数 |"
+    divider = "|---|---|---|---|---|---|"
     for m in models_tested:
         short = m.capitalize()
         header += f" {short}阶段 | {short}概率 | {short}建议 |"
@@ -659,11 +659,9 @@ def generate_report():
     # 客户列表（按input_data顺序）
     for i, c in enumerate(input_data):
         key = (c['wechat_id'], c['sales_wechat_id'])
-        display_name = c.get('remark', '') or c.get('wechat_id', '')[:10]
-        # 脱敏：只显示前4字符
-        if len(display_name) > 6:
-            display_name = display_name[:4] + '...'
-        row = f"| {i+1} | {display_name} | {c.get('sales_name','')} | {c.get('stratum','')} | {c.get('msg_count',0)} |"
+        wechat_id = c.get('wechat_id', '')
+        remark = c.get('remark', '')
+        row = f"| {i+1} | {wechat_id} | {remark} | {c.get('sales_name','')} | {c.get('stratum','')} | {c.get('msg_count',0)} |"
         for m in models_tested:
             r = model_idx[m].get(key, {})
             p = r.get('parsed') or {}
@@ -717,8 +715,9 @@ def generate_report():
     for idx in sample_indices:
         c = input_data[idx]
         key = (c['wechat_id'], c['sales_wechat_id'])
-        display_name = c.get('remark', '') or c.get('wechat_id', '')[:10]
-        lines.append(f"### 客户 {idx+1}: {display_name} ({c.get('stratum','')}, {c.get('msg_count',0)}条)")
+        wechat_id = c.get('wechat_id', '')
+        remark = c.get('remark', '')
+        lines.append(f"### 客户 {idx+1}: {wechat_id} ({remark}) ({c.get('stratum','')}, {c.get('msg_count',0)}条)")
         lines.append("")
         for m in models_tested:
             r = model_idx.get(m, {}).get(key, {})
