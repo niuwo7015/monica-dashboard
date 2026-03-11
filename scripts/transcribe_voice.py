@@ -25,6 +25,8 @@ DASHSCOPE_KEY = os.environ.get("DASHSCOPE_API_KEY", "")
 BATCH_SIZE = 50        # DashScope 单次最多100，保守用50
 PAGE_SIZE = 1000       # Supabase 分页大小
 MIN_DATE = "2025-10-01T00:00:00"
+OSS_PREFIX = "https://yunke-pcfile.oss-cn-beijing.aliyuncs.com/wechat-voice/msg_"
+OSS_SUFFIX = ".mp3"
 
 # --------------- supabase ---------------
 _sb = None
@@ -74,6 +76,12 @@ def fetch_voice_messages(limit=0):
     if limit > 0:
         unique = unique[:limit]
     return unique
+
+def file_id_to_url(file_id):
+    """DB存的是文件ID（26位hex），拼成完整OSS URL"""
+    if file_id.startswith("http"):
+        return file_id
+    return f"{OSS_PREFIX}{file_id}{OSS_SUFFIX}"
 
 # --------------- DashScope 转录 ---------------
 def transcribe_batch(file_urls):
@@ -175,7 +183,8 @@ def main():
 
     if args.dry_run:
         for r in rows[:20]:
-            log.info(f"  {r['sent_at']} | {r['msg_svr_id']} | {r['file_url'][:80]}")
+            full = file_id_to_url(r['file_url'])
+            log.info(f"  {r['sent_at']} | {r['msg_svr_id']} | {full[:100]}")
         if len(rows) > 20:
             log.info(f"  ... 省略 {len(rows)-20} 条")
         log.info("dry-run 完毕")
@@ -190,14 +199,14 @@ def main():
         bnum = i // BATCH_SIZE + 1
         log.info(f"批次 {bnum}/{total_batches}: {len(batch)} 条")
 
-        # 建 url->msg_svr_id 映射
+        # 建 full_url->msg_svr_id 映射
         url_map = {}
         urls = []
         for r in batch:
-            u = r["file_url"]
-            if u and u not in url_map:
-                url_map[u] = r["msg_svr_id"]
-                urls.append(u)
+            full_url = file_id_to_url(r["file_url"])
+            if full_url and full_url not in url_map:
+                url_map[full_url] = r["msg_svr_id"]
+                urls.append(full_url)
 
         if not urls:
             continue
