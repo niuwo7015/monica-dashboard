@@ -5,6 +5,9 @@ transcribe_voice.py — 语音消息转文字 (T-013a)
 使用百炼 paraformer-v2 将 chat_messages 中的语音消息(msg_type=3)转为文字。
 转写结果写回 content 字段，格式：[语音转文字]识别结果
 
+file_url字段存的是云客内部文件hash，需拼成OSS下载URL：
+  https://yunke-pcfile.oss-cn-beijing.aliyuncs.com/wechat-voice/msg_{hash}.mp3
+
 用法：
   python3 transcribe_voice.py            # 处理所有待转写语音
   python3 transcribe_voice.py --limit 10  # 只处理前10条（测试用）
@@ -13,14 +16,12 @@ transcribe_voice.py — 语音消息转文字 (T-013a)
 
 import os
 import sys
-import json
 import time
 import logging
 import argparse
 import requests
 from http import HTTPStatus
 
-from dotenv import load_dotenv
 from supabase import create_client
 from dashscope.audio.asr import Transcription
 
@@ -28,13 +29,25 @@ from dashscope.audio.asr import Transcription
 # 配置
 # ============================================================
 
-load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+# 手动加载.env（不依赖python-dotenv）
+def _load_env():
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    os.environ.setdefault(k.strip(), v.strip())
+
+_load_env()
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://dieeejjzbhkpgxdhwlxf.supabase.co")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 DASHSCOPE_API_KEY = os.environ.get("DASHSCOPE_API_KEY", "")
 
 CUTOFF_DATE = "2025-10-01T00:00:00+00:00"
+OSS_BASE = "https://yunke-pcfile.oss-cn-beijing.aliyuncs.com/wechat-voice"
 
 # ============================================================
 # 日志
@@ -63,42 +76,26 @@ def get_sb():
     return _sb
 
 # ============================================================
+# 文件URL构造
+# ============================================================
+
+def build_oss_url(file_hash):
+    """将云客file hash拼成OSS MP3下载URL"""
+    return f"{OSS_BASE}/msg_{file_hash}.mp3"
+
+def check_url_accessible(url):
+    """HEAD请求检查URL是否可访问"""
+    try:
+        resp = requests.head(url, timeout=10, allow_redirects=True)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+# ============================================================
 # 查询待转写语音
 # ============================================================
 
 def fetch_voice_messages(limit=None):
-    """查 msg_type=3, content为空, file_url非空, sent_at>=2025-10-01"""
-    sb = get_sb()
-    messages = []
-    offset = 0
-    page_size = 1000
-
-    while True:
-        q = sb.table("chat_messages") \
-            .select("id, file_url, msg_svr_id, sent_at") \
-            .eq("msg_type", 3) \
-            .gte("sent_at", CUTOFF_DATE) \
-            .neq("file_url", "") \
-            .order("sent_at", desc=False) \
-            .range(offset, offset + page_size - 1)
-
-        resp = q.execute()
-        batch = resp.data or []
-
-        # 只保留content为空的
-        for row in batch:
-            messages.append(row)
-
-        if len(batch) < page_size:
-            break
-        offset += page_size
-
-    # 再过滤content为null或空（Supabase or_条件比较特殊，用Python过滤更可靠）
-    # 其实我们直接在这里用 or_ 过滤
-    # 改用直接查询方式
-    return messages
-
-def fetch_voice_messages_v2(limit=None):
     """查 msg_type=3, content为空或null, file_url非空, sent_at>=2025-10-01"""
     sb = get_sb()
     messages = []
@@ -139,16 +136,16 @@ def fetch_voice_messages_v2(limit=None):
 # 转写单条语音
 # ============================================================
 
-def transcribe_one(file_url):
+def transcribe_one(mp3_url):
     """
-    提交单个文件到 paraformer-v2 转写，返回文字。
+    提交OSS MP3 URL到 paraformer-v2 转写，返回文字。
     失败返回 None，空结果返回 ""。
     """
     try:
         # 提交异步转写任务
         task_resp = Transcription.async_call(
             model="paraformer-v2",
-            file_urls=[file_url],
+            file_urls=[mp3_url],
             language_hints=["zh", "en"],
             api_key=DASHSCOPE_API_KEY,
         )
@@ -158,7 +155,6 @@ def transcribe_one(file_url):
             return None
 
         task_id = task_resp.output.task_id
-        log.debug(f"  task_id={task_id}")
 
         # 等待完成
         result = Transcription.wait(
@@ -231,7 +227,7 @@ def main():
         sys.exit(1)
 
     # 查询待处理消息
-    messages = fetch_voice_messages_v2(limit=args.limit)
+    messages = fetch_voice_messages(limit=args.limit)
     log.info(f"待转写语音消息: {len(messages)} 条")
 
     if not messages:
@@ -240,7 +236,9 @@ def main():
 
     if args.dry_run:
         for i, msg in enumerate(messages[:20]):
-            log.info(f"  [{i+1}] id={msg['id']} sent_at={msg['sent_at']} file_url={msg['file_url'][:80]}...")
+            oss_url = build_oss_url(msg["file_url"])
+            accessible = check_url_accessible(oss_url)
+            log.info(f"  [{i+1}] sent_at={msg['sent_at']} accessible={accessible} url={oss_url}")
         if len(messages) > 20:
             log.info(f"  ... 还有 {len(messages) - 20} 条")
         return
@@ -248,18 +246,26 @@ def main():
     success = 0
     failed = 0
     empty = 0
+    skipped = 0
 
     for i, msg in enumerate(messages):
-        file_url = msg["file_url"]
+        file_hash = msg["file_url"]
         msg_id = msg["id"]
+        mp3_url = build_oss_url(file_hash)
 
         log.info(f"[{i+1}/{len(messages)}] msg_svr_id={msg.get('msg_svr_id', '?')} sent_at={msg['sent_at']}")
 
-        text = transcribe_one(file_url)
+        # 先检查文件是否可访问
+        if not check_url_accessible(mp3_url):
+            skipped += 1
+            log.info(f"  跳过: OSS文件不存在 ({file_hash})")
+            continue
+
+        text = transcribe_one(mp3_url)
 
         if text is None:
             failed += 1
-            log.warning(f"  转写失败, file_url={file_url[:100]}")
+            log.warning(f"  转写失败")
         elif text == "":
             empty += 1
             update_content(msg_id, "")
@@ -275,7 +281,7 @@ def main():
             time.sleep(0.5)
 
     log.info("-" * 50)
-    log.info(f"完成: 成功={success}, 空={empty}, 失败={failed}, 总计={len(messages)}")
+    log.info(f"完成: 成功={success}, 空={empty}, 失败={failed}, 跳过(OSS不存在)={skipped}, 总计={len(messages)}")
     log.info("=" * 50)
 
 
