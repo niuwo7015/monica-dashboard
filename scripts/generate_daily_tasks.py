@@ -7,11 +7,14 @@ S-003: Phase 1 规则引擎 — 生成每日跟进任务
 - 支持 --dry-run 模式（只输出不写库）
 
 规则逻辑（Phase 1）：
-  前置过滤：只扫描有≥1条非系统消息聊天记录的客户（排除僵尸号）
-  R3: 有聊天记录但≥7天无任何互动 → reactivate, priority=3（最先检查，避免被R1/R2覆盖）
+  前置过滤：排除僵尸号(无非系统消息)、销售自己的微信号、已成交客户(orders表)
+  R3: 有聊天记录但≥7天无任何互动 → reactivate（最先检查，避免被R1/R2覆盖）
+      高优(P7): (has_quote=true AND 沉默7-30天) OR (聊天>=20条 AND 沉默7-30天)
+      中优(P4): (聊天5-19条 AND 沉默7-30天) OR (聊天>=20条 AND 沉默31-60天)
+      低优(P1): 聊天<5条 OR 沉默>60天
   R1: 客户发了消息但销售未回复（1-6天） → urgent_reply, priority=10
   R2: 最后一条是销售发的，客户沉默3-6天 → follow_up_silent, priority=5
-  R4: 暂停 — contacts中无聊天记录的僵尸号跳过，等add_time数据可用后恢复新客触达
+  R4: 暂停 — contacts中无聊天记录的僵尸号跳过
 """
 
 import os
@@ -75,7 +78,7 @@ def fetch_all_contacts():
 
     while True:
         result = supabase.table('contacts').select(
-            'wechat_id, sales_wechat_id, nickname, remark, customer_id'
+            'wechat_id, sales_wechat_id, nickname, remark, customer_id, has_quote, wechat_alias'
         ).eq('is_deleted', 0).neq(
             'friend_type', 2  # 排除群聊
         ).range(offset, offset + page_size - 1).execute()
@@ -89,6 +92,25 @@ def fetch_all_contacts():
         offset += page_size
 
     return all_contacts
+
+
+def fetch_ordered_wechat_ids():
+    """获取orders表中所有已成交客户的wechat_id集合（用于排除）。
+    注意：orders.wechat_id多为wechat_alias格式，需同时匹配contacts.wechat_id和wechat_alias。
+    """
+    wids = set()
+    offset = 0
+    while True:
+        result = supabase.table('orders').select('wechat_id').range(offset, offset + 999).execute()
+        if not result.data:
+            break
+        for row in result.data:
+            if row.get('wechat_id'):
+                wids.add(row['wechat_id'])
+        if len(result.data) < 1000:
+            break
+        offset += 1000
+    return wids
 
 
 def fetch_last_messages_for_sales(sales_wechat_id):
@@ -132,10 +154,12 @@ def fetch_last_messages_for_sales(sales_wechat_id):
                     'last_sender_type': sender_type,
                     'last_customer_msg_at': None,
                     'last_sales_msg_at': None,
+                    'msg_count': 0,
                 }
                 incomplete.add(wid)
 
             stats = contact_stats[wid]
+            stats['msg_count'] += 1
 
             if sender_type == 'customer' and stats['last_customer_msg_at'] is None:
                 stats['last_customer_msg_at'] = sent_at
@@ -198,12 +222,25 @@ def apply_rules(contact, msg_stats, now):
     silence_days = days_since(last_sent_at, now)
 
     # R3: 有聊天记录但≥7天无任何互动 → 需要激活（优先于R1/R2，避免被覆盖）
-    # 超过7天的对话已经"冷掉"，不再是urgent_reply或follow_up，而是reactivate
     if silence_days is not None and silence_days >= REACTIVATE_DAYS:
+        has_quote = contact.get('has_quote', False)
+        msg_count = msg_stats.get('msg_count', 0)
+
+        # R3优先级区间
+        if silence_days <= 30 and (has_quote or msg_count >= 20):
+            priority = 7  # 高优：有报价或深度聊天，且沉默7-30天
+            tier = '高'
+        elif (5 <= msg_count <= 19 and silence_days <= 30) or (msg_count >= 20 and 31 <= silence_days <= 60):
+            priority = 4  # 中优：中度聊天7-30天，或深度聊天31-60天
+            tier = '中'
+        else:
+            priority = 1  # 低优：聊天<5条 或 沉默>60天
+            tier = '低'
+
         tasks.append({
             'task_type': 'reactivate',
-            'trigger_rule': f'R3: {silence_days}天无互动',
-            'priority': 3,
+            'trigger_rule': f'R3({tier}): {silence_days}天无互动, {msg_count}条消息' + (', 有报价' if has_quote else ''),
+            'priority': priority,
         })
         return tasks
 
@@ -244,9 +281,33 @@ def generate_tasks(dry_run=False):
     contacts = fetch_all_contacts()
     logger.info(f"contacts总数: {len(contacts)}")
 
+    # 获取已成交客户wechat_id集合（用于排除）
+    ordered_wids = fetch_ordered_wechat_ids()
+    logger.info(f"已成交客户wechat_id: {len(ordered_wids)}个")
+
+    # 排除：销售自己的微信号、已成交客户
+    sales_wid_set = set(SALES_WECHAT_IDS)
+    filtered_contacts = []
+    excluded_sales = 0
+    excluded_ordered = 0
+    for c in contacts:
+        wid = c.get('wechat_id', '')
+        alias = c.get('wechat_alias', '')
+        # 排除销售自己
+        if wid in sales_wid_set:
+            excluded_sales += 1
+            continue
+        # 排除已成交客户（orders.wechat_id匹配contacts.wechat_id或wechat_alias）
+        if wid in ordered_wids or (alias and alias in ordered_wids):
+            excluded_ordered += 1
+            continue
+        filtered_contacts.append(c)
+
+    logger.info(f"排除销售自己: {excluded_sales}, 排除已成交: {excluded_ordered}, 剩余: {len(filtered_contacts)}")
+
     # 按销售微信号分组
     contacts_by_sales = defaultdict(list)
-    for c in contacts:
+    for c in filtered_contacts:
         sales_wid = c.get('sales_wechat_id')
         if sales_wid:
             contacts_by_sales[sales_wid].append(c)
@@ -254,7 +315,7 @@ def generate_tasks(dry_run=False):
     # 2. 逐销售处理
     all_tasks = []
     stats = {
-        'total_contacts': len(contacts),
+        'total_contacts': len(filtered_contacts),
         'contacts_with_chat': 0,
         'contacts_no_chat': 0,
         'tasks_generated': 0,
@@ -316,6 +377,11 @@ def generate_tasks(dry_run=False):
     logger.info(f"  按类型:")
     for task_type, count in sorted(stats['by_type'].items()):
         logger.info(f"    {task_type}: {count}")
+    if stats['by_type'].get('reactivate'):
+        r3_high = sum(1 for t in all_tasks if t['task_type'] == 'reactivate' and t['priority'] == 7)
+        r3_mid = sum(1 for t in all_tasks if t['task_type'] == 'reactivate' and t['priority'] == 4)
+        r3_low = sum(1 for t in all_tasks if t['task_type'] == 'reactivate' and t['priority'] == 1)
+        logger.info(f"    R3细分: 高优(P7)={r3_high}, 中优(P4)={r3_mid}, 低优(P1)={r3_low}")
     logger.info(f"  按销售:")
     for sales_wid, count in sorted(stats['by_sales'].items()):
         logger.info(f"    {SALES_NAMES.get(sales_wid, sales_wid)}: {count}")
@@ -329,7 +395,7 @@ def generate_tasks(dry_run=False):
         for i, task in enumerate(all_tasks[:20]):
             name = ''
             # 尝试找到对应的contact nickname
-            for c in contacts:
+            for c in filtered_contacts:
                 if c['wechat_id'] == task.get('contact_wechat_id') and c['sales_wechat_id'] == task.get('sales_wechat_id'):
                     name = c.get('remark') or c.get('nickname') or ''
                     break
