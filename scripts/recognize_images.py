@@ -57,7 +57,7 @@ def fetch_pending_images():
             .gte("sent_at", "2025-10-01T00:00:00+00:00")
             .or_("content.is.null,content.eq.")
             .neq("file_url", "")
-            .not_("file_url", "is", "null")
+            .not_.is_("file_url", "null")
             .range(offset, offset + page_size - 1)
             .execute()
         )
