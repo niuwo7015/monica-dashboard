@@ -21,6 +21,20 @@
 
 **详情**: 见 `docs/execution-reports/2026-03-09-S004-yunke-api-exploration.md`
 
+### PQ-008: Anthropic API从阿里云服务器访问方案（2026-03-12，T-023）
+
+**背景**: T-023 A/B测试需要调用 Haiku 4.5 和 Sonnet 4.6，但阿里云深圳服务器（119.23.44.77）无法直连 api.anthropic.com，返回 HTTP 403。DeepSeek已成功完成50客户诊断。
+
+**待决策**:
+1. **方案A**: 在服务器配置HTTP代理（需已有代理服务）
+2. **方案B**: 使用海外VPS做API中转（~$5/月）
+3. **方案C**: 使用国内Anthropic API中转服务（可能有加价）
+4. **方案D**: 在本地Windows机器运行Anthropic部分（零额外成本，但需本地配置环境）
+
+**预计费用**: Haiku 50客户 ≈ $0.15，Sonnet 50客户 ≈ $0.90
+
+**详情**: 见 `docs/execution-reports/2026-03-12-T023-AB-test-diagnosis.md`
+
 ---
 
 ## 已解决

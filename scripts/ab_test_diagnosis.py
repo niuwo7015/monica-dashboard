@@ -127,28 +127,29 @@ def select_customers():
     """分层抽样选取50个测试客户"""
     logger.info("=== Step 1: 分层抽样选取测试客户 ===")
 
-    # 1. 获取已成交客户（排除）
+    # 1. 获取已成交客户（排除）— 生产表用 wechat_id + order_stage='won'
+    #    注：orders表无sales_wechat_id，只用wechat_id排除
     logger.info("获取已成交客户列表...")
-    won_customers = set()
+    won_wechat_ids = set()
     offset = 0
     while True:
         result = supabase.table('orders').select(
-            'customer_wechat_id, sales_wechat_id'
-        ).eq('order_status', 'completed').range(offset, offset + 999).execute()
+            'wechat_id'
+        ).eq('order_stage', 'won').range(offset, offset + 999).execute()
         if not result.data:
             break
         for row in result.data:
-            if row.get('customer_wechat_id') and row.get('sales_wechat_id'):
-                won_customers.add((row['customer_wechat_id'], row['sales_wechat_id']))
+            wid = row.get('wechat_id')
+            if wid:
+                won_wechat_ids.add(wid)
         if len(result.data) < 1000:
             break
         offset += 1000
-    logger.info(f"已成交客户数: {len(won_customers)}")
+    logger.info(f"已成交客户wechat_id数: {len(won_wechat_ids)}")
 
     # 2. 获取所有contacts（3位销售的私聊好友）
     logger.info("获取contacts...")
     all_contacts = []
-    offset = 0
     for sales_wx in TEST_SALES:
         offset = 0
         while True:
@@ -166,30 +167,48 @@ def select_customers():
     logger.info(f"3位销售的contacts总数: {len(all_contacts)}")
 
     # 3. 统计每个客户的私聊非系统消息条数
-    logger.info("统计每个客户私聊消息条数（RPC调用）...")
-    # 用SQL RPC更高效：按(wechat_id, sales_wechat_id)分组计数
-    # 但supabase-py不支持复杂聚合，改用分批查询
-    contact_msg_counts = {}
-    total = len(all_contacts)
-    for i, c in enumerate(all_contacts):
-        key = (c['wechat_id'], c['sales_wechat_id'])
-        if key in won_customers:
-            continue  # 排除已成交
-        if i % 200 == 0:
-            logger.info(f"  统计进度: {i}/{total}")
-        # 用head count查询 — 只需要计数
-        try:
+    #    优化：按销售拉全部私聊消息的(wechat_id)，在本地计数，避免N次API调用
+    logger.info("统计每个客户私聊消息条数（按销售批量拉取）...")
+    msg_counts = defaultdict(int)  # key: (wechat_id, sales_wechat_id) -> count
+
+    for sales_wx in TEST_SALES:
+        logger.info(f"  拉取 {TEST_SALES[sales_wx]} 的私聊消息...")
+        offset = 0
+        page_size = 1000
+        while True:
             result = supabase.table('chat_messages').select(
-                'id', count='exact'
-            ).eq('wechat_id', c['wechat_id']).eq(
-                'sales_wechat_id', c['sales_wechat_id']
-            ).eq('is_system_msg', False).not_(
-                'room_id', 'like', '%@chatroom%'
+                'wechat_id'
+            ).eq(
+                'sales_wechat_id', sales_wx
+            ).eq(
+                'is_system_msg', False
+            ).not_.like('room_id', '%@chatroom').range(
+                offset, offset + page_size - 1
             ).execute()
-            cnt = result.count if result.count is not None else 0
-        except Exception as e:
-            logger.warning(f"  查询失败 {c['wechat_id']}: {e}")
-            cnt = 0
+            if not result.data:
+                break
+            for row in result.data:
+                wid = row.get('wechat_id')
+                if wid:
+                    msg_counts[(wid, sales_wx)] += 1
+            if len(result.data) < page_size:
+                break
+            offset += page_size
+        logger.info(f"    累计客户数: {sum(1 for k in msg_counts if k[1] == sales_wx)}")
+
+    # 构建候选列表
+    contacts_map = {}
+    for c in all_contacts:
+        key = (c['wechat_id'], c['sales_wechat_id'])
+        contacts_map[key] = c
+
+    contact_msg_counts = {}
+    for key, cnt in msg_counts.items():
+        if key[0] in won_wechat_ids:
+            continue  # 排除已成交
+        c = contacts_map.get(key)
+        if not c:
+            continue  # 不在contacts中（可能是群消息泄漏）
         if cnt > 0:
             contact_msg_counts[key] = {
                 'wechat_id': c['wechat_id'],
@@ -303,8 +322,8 @@ def prepare_input_data(customers=None):
             'sender_type, content, sent_at, msg_type'
         ).eq('wechat_id', wechat_id).eq(
             'sales_wechat_id', sales_wechat_id
-        ).eq('is_system_msg', False).not_(
-            'room_id', 'like', '%@chatroom%'
+        ).eq('is_system_msg', False).not_.like(
+            'room_id', '%@chatroom'
         ).order('sent_at', desc=True).limit(50).execute()
 
         messages = list(reversed(result.data)) if result.data else []
