@@ -74,14 +74,28 @@ SALES_NAME_TO_ID = {
 # ── 列映射（与3个飞书表格统一结构对应） ──────────────────
 COL_ORDER_DATE = 0       # A: 下单期
 COL_SALES_NAME = 1       # B: 客服
+COL_CUSTOMER_NAME = 2    # C: 博主          → customer_name
 COL_WECHAT_ID = 3        # D: 微信号
+COL_TAOBAO_ID = 5        # F: 旺旺号        → taobao_id
+COL_RECEIVER_NAME = 6    # G: 收货人        → receiver_name
+COL_PHONE = 7            # H: 电话          → phone
+COL_ADDRESS = 8          # I: 地址          → address
 COL_PRODUCT_TYPE = 9     # J: 产品类型
 COL_PRODUCT_NAME = 10    # K: 产品品名
+COL_SIZE = 11            # L: 尺寸（米）    → size
+COL_SIDES = 12           # M: 单面/双面     → sides
+COL_FABRIC = 13          # N: 面料          → fabric
+COL_REQ_DETAIL = 14      # O: 需求明细      → requirement_detail
 COL_AMOUNT = 15          # P: 销售金额
+COL_PAY_CHANNEL = 16     # Q: 收款渠道      → payment_channel
 COL_DEPOSIT_NOTE = 17    # R: 订金备注
 COL_BALANCE_NOTE = 18    # S: 尾款备注
 COL_ORDER_TIME = 19      # T: 下单时间（备用日期）
 COL_PAYMENT_STATUS = 20  # U: 确认收款
+COL_MANUFACTURER = 21    # V: 厂家          → manufacturer
+COL_PROD_STATUS = 22     # W: 是否完成生产  → production_status
+COL_SHIPPING_DATE = 23   # X: 发货日期      → shipping_date
+COL_LOGISTICS = 24       # Y: 物流公司      → logistics_company
 COL_NOTES = 25           # Z: 备注
 
 
@@ -455,6 +469,22 @@ def parse_rows(rows, source_tag, wechat_lookup=None):
         # 备注
         notes = cell(row, COL_NOTES) or None
 
+        # T-026c: 新增字段
+        customer_name = cell(row, COL_CUSTOMER_NAME) or None
+        taobao_id = cell(row, COL_TAOBAO_ID) or None
+        receiver_name = cell(row, COL_RECEIVER_NAME) or None
+        phone = cell(row, COL_PHONE) or None
+        address = cell(row, COL_ADDRESS) or None
+        size = cell(row, COL_SIZE) or None
+        sides = cell(row, COL_SIDES) or None
+        fabric = cell(row, COL_FABRIC) or None
+        requirement_detail = cell(row, COL_REQ_DETAIL) or None
+        payment_channel = cell(row, COL_PAY_CHANNEL) or None
+        manufacturer = cell(row, COL_MANUFACTURER) or None
+        production_status = cell(row, COL_PROD_STATUS) or None
+        shipping_date = parse_date(cell(row, COL_SHIPPING_DATE))
+        logistics_company = cell(row, COL_LOGISTICS) or None
+
         order = {
             'wechat_id': wechat_id,
             'order_date': order_date,
@@ -467,6 +497,20 @@ def parse_rows(rows, source_tag, wechat_lookup=None):
             'delivery_status': '待生产',
             'feishu_record_id': f"{source_tag}_row{row_idx}",
             'notes': notes,
+            'customer_name': customer_name,
+            'taobao_id': taobao_id,
+            'receiver_name': receiver_name,
+            'phone': phone,
+            'address': address,
+            'size': size,
+            'sides': sides,
+            'fabric': fabric,
+            'requirement_detail': requirement_detail,
+            'payment_channel': payment_channel,
+            'manufacturer': manufacturer,
+            'production_status': production_status,
+            'shipping_date': shipping_date,
+            'logistics_company': logistics_company,
             'updated_at': datetime.now(timezone.utc).isoformat(),
         }
 
@@ -515,17 +559,18 @@ def get_existing_record_ids(supabase):
 
 
 def sync_to_supabase(supabase, orders):
-    """批量写入Supabase orders表（insert去重，非upsert）"""
+    """批量写入Supabase orders表（upsert by feishu_record_id）
+
+    T-026c: 改为upsert模式，已有记录也会更新新字段
+    """
     if not orders:
         logger.info("无订单需要同步")
-        return 0
+        return 0, 0
 
     # 检查order_stage列是否存在
     has_stage = check_order_stage_column(supabase)
     if has_stage:
         logger.info("order_stage列存在，将写入订单阶段")
-    else:
-        logger.warning("order_stage列不存在，跳过订单阶段写入（后续可通过SQL添加）")
 
     # 清理数据：移除_extra字段，按需添加order_stage
     for order in orders:
@@ -533,41 +578,56 @@ def sync_to_supabase(supabase, orders):
         if has_stage and stage:
             order['order_stage'] = stage
 
-    # 去重：跳过已存在的feishu_record_id
+    # 区分新增和更新
     existing_ids = get_existing_record_ids(supabase)
     new_orders = [o for o in orders if o['feishu_record_id'] not in existing_ids]
-    skipped = len(orders) - len(new_orders)
-    if skipped:
-        logger.info(f"跳过 {skipped} 条已存在的订单")
+    update_orders = [o for o in orders if o['feishu_record_id'] in existing_ids]
 
-    if not new_orders:
-        logger.info("所有订单均已存在，无需同步")
-        return 0
+    logger.info(f"新增 {len(new_orders)} 条, 更新 {len(update_orders)} 条")
 
-    logger.info(f"准备写入 {len(new_orders)} 条新订单")
-
-    written = 0
+    inserted = 0
+    updated = 0
     batch_size = 50
 
+    # 新增
     for i in range(0, len(new_orders), batch_size):
         batch = new_orders[i:i + batch_size]
         try:
             supabase.table('orders').insert(batch).execute()
-            written += len(batch)
-            logger.info(f"写入 {written}/{len(new_orders)} 条")
+            inserted += len(batch)
+            logger.info(f"新增 {inserted}/{len(new_orders)} 条")
         except Exception as e:
-            logger.error(f"批量写入失败: {e}")
-            # 降级逐条写入
+            logger.error(f"批量新增失败: {e}")
             for row in batch:
                 try:
                     supabase.table('orders').insert(row).execute()
-                    written += 1
+                    inserted += 1
                 except Exception as e2:
-                    logger.warning(f"单条写入失败 (wechat={row.get('wechat_id')}, "
+                    logger.warning(f"单条新增失败 (wechat={row.get('wechat_id')}, "
                                  f"date={row.get('order_date')}): {e2}")
 
-    logger.info(f"同步完成: 共写入 {written}/{len(new_orders)} 条新订单")
-    return written
+    # 更新已有记录（用feishu_record_id匹配，upsert）
+    for i in range(0, len(update_orders), batch_size):
+        batch = update_orders[i:i + batch_size]
+        try:
+            supabase.table('orders').upsert(
+                batch, on_conflict='feishu_record_id'
+            ).execute()
+            updated += len(batch)
+            logger.info(f"更新 {updated}/{len(update_orders)} 条")
+        except Exception as e:
+            logger.error(f"批量更新失败: {e}")
+            for row in batch:
+                try:
+                    supabase.table('orders').upsert(
+                        row, on_conflict='feishu_record_id'
+                    ).execute()
+                    updated += 1
+                except Exception as e2:
+                    logger.warning(f"单条更新失败 (frid={row.get('feishu_record_id')}): {e2}")
+
+    logger.info(f"同步完成: 新增 {inserted}, 更新 {updated}")
+    return inserted, updated
 
 
 def main():
@@ -674,10 +734,10 @@ def main():
         return
 
     # 5. 写入Supabase（supabase client已在步骤1b创建）
-    written = sync_to_supabase(supabase, all_orders)
+    inserted, updated = sync_to_supabase(supabase, all_orders)
 
     logger.info("=" * 60)
-    logger.info(f"T-016 同步完成: {written} 条订单已写入orders表")
+    logger.info(f"T-026c 同步完成: 新增 {inserted} 条, 更新 {updated} 条")
     logger.info("=" * 60)
 
 
