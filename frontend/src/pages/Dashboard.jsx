@@ -247,6 +247,16 @@ function FunnelCard({ data, funnelMode, onModeChange }) {
         </div>
       </div>
 
+      {/* Empty hint for cohort mode */}
+      {firstVal === 0 && funnelMode === 'acquisition' && (
+        <div style={{
+          fontSize: 12, color: D.orange, textAlign: 'center',
+          padding: '8px 0', lineHeight: 1.5,
+        }}>
+          该时间段无新增客户，试试选择「半年」或「全部」
+        </div>
+      )}
+
       {/* Funnel bars */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
         {FUNNEL_STEPS.map((step, i) => {
