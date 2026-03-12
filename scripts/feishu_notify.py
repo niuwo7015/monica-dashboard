@@ -105,15 +105,24 @@ def send_feishu_message(webhook_url, msg_type, content):
 
 
 def fetch_today_tasks(supabase, task_date):
-    """获取指定日期的daily_tasks"""
+    """获取指定日期的daily_tasks（分页获取全部）"""
+    all_data = []
+    page_size = 1000
+    offset = 0
     try:
-        result = supabase.table('daily_tasks').select(
-            'sales_wechat_id, task_type, priority, status, contact_wechat_id'
-        ).eq('task_date', task_date.isoformat()).execute()
-        return result.data or []
+        while True:
+            result = supabase.table('daily_tasks').select(
+                'sales_wechat_id, task_type, priority, status, contact_wechat_id'
+            ).eq('task_date', task_date.isoformat()).range(offset, offset + page_size - 1).execute()
+            batch = result.data or []
+            all_data.extend(batch)
+            if len(batch) < page_size:
+                break
+            offset += page_size
+        return all_data
     except Exception as e:
         logger.error(f"查询daily_tasks失败: {e}")
-        return []
+        return all_data or []
 
 
 def build_daily_summary_card(task_date, tasks):
