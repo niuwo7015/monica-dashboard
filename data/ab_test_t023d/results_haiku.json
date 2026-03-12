@@ -1,0 +1,811 @@
+{
+  "summary": {
+    "model": "haiku",
+    "model_name": "Claude Haiku 4.5",
+    "total_customers": 50,
+    "total_input_tokens": 110271,
+    "total_output_tokens": 6234,
+    "total_time_seconds": 221.98,
+    "cost_usd": 0.1414,
+    "cost_cny": 1.02,
+    "errors": 1,
+    "parse_failures": 1
+  },
+  "results": [
+    {
+      "wechat_id": "chenxin6008",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "诚心",
+      "stratum": "deep",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户确认年前搬家节点，已报价21850元，客户主动询问产品用材差异\",\n  \"do_this\": \"发送莫妮卡摩卡vs正品拆解对比图（木方厚度/海绵密度/弹簧配置），强调1:1复刻工艺优势，询问是否需要寄样或预约签合同\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户确认年前搬家节点，已报价21850元，客户主动询问产品用材差异",
+        "do_this": "发送莫妮卡摩卡vs正品拆解对比图（木方厚度/海绵密度/弹簧配置），强调1:1复刻工艺优势，询问是否需要寄样或预约签合同",
+        "risk": null
+      },
+      "input_tokens": 2896,
+      "output_tokens": 142,
+      "elapsed": 4.59
+    },
+    {
+      "wechat_id": "y991047227",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "D26.01.31",
+      "stratum": "deep",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户已确认沙发床尺寸无问题，明确指示\\\"安排生产\\\"，具备下单条件。\",\n  \"do_this\": \"立即确认订单详情（沙发+床的面料、颜色、交付地址），通知定金金额和支付方式，锁定下月五号左右出货时间。\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户已确认沙发床尺寸无问题，明确指示\"安排生产\"，具备下单条件。",
+        "do_this": "立即确认订单详情（沙发+床的面料、颜色、交付地址），通知定金金额和支付方式，锁定下月五号左右出货时间。",
+        "risk": null
+      },
+      "input_tokens": 3069,
+      "output_tokens": 129,
+      "elapsed": 3.87
+    },
+    {
+      "wechat_id": "wxid_58dh8qkqo34b12",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "Z26.01.08",
+      "stratum": "deep",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户已确认产品配置、面料、尺寸，明确装修节点（年后拿房618左右），等待活动通知\",\n  \"do_this\": \"立即整理该客户的完整方案单（豆腐块+脚踏2.6米棉麻款9970元），备好618活动规则，年后拿房前一周主动触达确认沙发进度\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户已确认产品配置、面料、尺寸，明确装修节点（年后拿房618左右），等待活动通知",
+        "do_this": "立即整理该客户的完整方案单（豆腐块+脚踏2.6米棉麻款9970元），备好618活动规则，年后拿房前一周主动触达确认沙发进度",
+        "risk": null
+      },
+      "input_tokens": 2875,
+      "output_tokens": 145,
+      "elapsed": 10.05
+    },
+    {
+      "wechat_id": "wxid_7158861587312",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "厂长",
+      "stratum": "deep",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"客户是供应商/工厂，非终端消费者，37条消息无报价需求\",\n  \"do_this\": \"确认身份后调整沟通策略，询问是否代理/渠道合作或仅为工厂对接\",\n  \"risk\": \"客户身份存疑，可能非销售目标客户\"\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "客户是供应商/工厂，非终端消费者，37条消息无报价需求",
+        "do_this": "确认身份后调整沟通策略，询问是否代理/渠道合作或仅为工厂对接",
+        "risk": "客户身份存疑，可能非销售目标客户"
+      },
+      "input_tokens": 2361,
+      "output_tokens": 121,
+      "elapsed": 4.06
+    },
+    {
+      "wechat_id": "wxid_baqj63g0efne22",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "D25.12.10像素 滋滋雅典1",
+      "stratum": "deep",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"客户已付款提货，目前在坐月子，暂无使用反馈，需等待入住后评价\",\n  \"do_this\": \"设置4-6周后低频提醒（入住后咨询使用感受），准备售后维护话术，为后续转介绍铺垫\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "客户已付款提货，目前在坐月子，暂无使用反馈，需等待入住后评价",
+        "do_this": "设置4-6周后低频提醒（入住后咨询使用感受），准备售后维护话术，为后续转介绍铺垫",
+        "risk": null
+      },
+      "input_tokens": 2702,
+      "output_tokens": 119,
+      "elapsed": 4.01
+    },
+    {
+      "wechat_id": "a30049179",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "G26.1.27",
+      "stratum": "deep",
+      "raw_output": "```json\n{\n  \"action\": \"revive\",\n  \"reason\": \"报价后40天沉默，客户有比价意向但未下定，需重新激活\",\n  \"do_this\": \"发送库存岩石沙发3米粗麻面料案例图+成本拆解（松木框架vs竞品对比），附本周团购优惠截止时间\",\n  \"risk\": \"报价后沉默，长期未回复，竞品比价中\"\n}\n```",
+      "parsed": {
+        "action": "revive",
+        "reason": "报价后40天沉默，客户有比价意向但未下定，需重新激活",
+        "do_this": "发送库存岩石沙发3米粗麻面料案例图+成本拆解（松木框架vs竞品对比），附本周团购优惠截止时间",
+        "risk": "报价后沉默，长期未回复，竞品比价中"
+      },
+      "input_tokens": 2711,
+      "output_tokens": 139,
+      "elapsed": 4.42
+    },
+    {
+      "wechat_id": "wxid_zlncsgzysowl22",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "天天",
+      "stratum": "deep",
+      "raw_output": "```json\n{\n  \"action\": \"drop\",\n  \"reason\": \"内部员工沟通记录，非真实客户销售对话\",\n  \"do_this\": \"确认聊天对象身份，如非目标客户则停止跟进\",\n  \"risk\": \"数据错误，可能输入了内部工作群记录\"\n}\n```",
+      "parsed": {
+        "action": "drop",
+        "reason": "内部员工沟通记录，非真实客户销售对话",
+        "do_this": "确认聊天对象身份，如非目标客户则停止跟进",
+        "risk": "数据错误，可能输入了内部工作群记录"
+      },
+      "input_tokens": 2655,
+      "output_tokens": 100,
+      "elapsed": 3.59
+    },
+    {
+      "wechat_id": "wxid_id8wcb2yno5321",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "z251210-故事外的人",
+      "stratum": "deep",
+      "raw_output": "```json\n{\n  \"action\": \"revive\",\n  \"reason\": \"报价后10天无明确回应，客户表示超预算但未拒绝，需激活\",\n  \"do_this\": \"发送岩石沙发3米配置方案+价格对标（比像素沙发便宜2000-3000元），附双十二截止日期提醒\",\n  \"risk\": \"报价后沉默超48小时，预算与报价有缺口\"\n}\n```",
+      "parsed": {
+        "action": "revive",
+        "reason": "报价后10天无明确回应，客户表示超预算但未拒绝，需激活",
+        "do_this": "发送岩石沙发3米配置方案+价格对标（比像素沙发便宜2000-3000元），附双十二截止日期提醒",
+        "risk": "报价后沉默超48小时，预算与报价有缺口"
+      },
+      "input_tokens": 2880,
+      "output_tokens": 138,
+      "elapsed": 4.09
+    },
+    {
+      "wechat_id": "a38790530",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "z260117-崔文娟",
+      "stratum": "deep",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"客户在装修早期，需求未定型，说\"再考虑有需要联系\"\",\n  \"do_this\": \"低频维护，2周后发送极简风格案例图（西区棉麻+极简硬装搭配），等待装修节点推进\",\n  \"risk\": \"西区棉麻报价14370超预算8000，价差79%，客户有比价意向但未下定决心\"\n}\n```",
+      "parsed": null,
+      "input_tokens": 3020,
+      "output_tokens": 145,
+      "elapsed": 4.64
+    },
+    {
+      "wechat_id": "wxid_ljm9or00hj2v11",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "z251027- Vivine",
+      "stratum": "deep",
+      "raw_output": "```json\n{\n  \"action\": \"revive\",\n  \"reason\": \"报价后超48小时无回应，客户在价格敏感节点流失\",\n  \"do_this\": \"发送库存图片对比：磨砂布vs雪尼尔质感差异，附上原版拆解成本说明和双十一活动截止时间\",\n  \"risk\": \"报价后沉默，高危流失节点\"\n}\n```",
+      "parsed": {
+        "action": "revive",
+        "reason": "报价后超48小时无回应，客户在价格敏感节点流失",
+        "do_this": "发送库存图片对比：磨砂布vs雪尼尔质感差异，附上原版拆解成本说明和双十一活动截止时间",
+        "risk": "报价后沉默，高危流失节点"
+      },
+      "input_tokens": 2971,
+      "output_tokens": 126,
+      "elapsed": 4.24
+    },
+    {
+      "wechat_id": "wxid_yt79lzgnb7tk11",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "Q26.01.04",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户已确认组合方案、面料材质（棉麻）、收到报价24650元，处于决策最后环节\",\n  \"do_this\": \"发送摩图棉麻系列色卡（3-5个推荐色），同时确认定金比例和发货周期，准备收定金\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户已确认组合方案、面料材质（棉麻）、收到报价24650元，处于决策最后环节",
+        "do_this": "发送摩图棉麻系列色卡（3-5个推荐色），同时确认定金比例和发货周期，准备收定金",
+        "risk": null
+      },
+      "input_tokens": 1928,
+      "output_tokens": 121,
+      "elapsed": 3.79
+    },
+    {
+      "wechat_id": "wei457353987",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "Z25.11.28",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户确认尺寸、询问材质和价格，已获得报价12950元\",\n  \"do_this\": \"发送该款磨砂布沙发的实拍图和客户案例，确认面料颜色选择，询问定金支付方式\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户确认尺寸、询问材质和价格，已获得报价12950元",
+        "do_this": "发送该款磨砂布沙发的实拍图和客户案例，确认面料颜色选择，询问定金支付方式",
+        "risk": null
+      },
+      "input_tokens": 2034,
+      "output_tokens": 107,
+      "elapsed": 3.46
+    },
+    {
+      "wechat_id": "wxid_x3g3tsan9slm22",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "Z25.11.03",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"revive\",\n  \"reason\": \"报价后12天沉默，客户多次表达预算困难但未明确拒绝\",\n  \"do_this\": \"发送花瓣沙发拆解成本对比图+双十一倒计时截图，突出原版1:1复刻优势与价格下限\",\n  \"risk\": \"报价后沉默，高危流失节点\"\n}\n```",
+      "parsed": {
+        "action": "revive",
+        "reason": "报价后12天沉默，客户多次表达预算困难但未明确拒绝",
+        "do_this": "发送花瓣沙发拆解成本对比图+双十一倒计时截图，突出原版1:1复刻优势与价格下限",
+        "risk": "报价后沉默，高危流失节点"
+      },
+      "input_tokens": 2221,
+      "output_tokens": 128,
+      "elapsed": 4.77
+    },
+    {
+      "wechat_id": "25984983071138646@openim",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "奥格(椅子专家)业务跟单啊敏  @思千家具",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"浅度接触，客户是B端采购，非终端消费者，无明确个人需求信号\",\n  \"do_this\": \"定期分享新品开发进度或供应链优化案例，维持专业关系，等待其项目需求\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "浅度接触，客户是B端采购，非终端消费者，无明确个人需求信号",
+        "do_this": "定期分享新品开发进度或供应链优化案例，维持专业关系，等待其项目需求",
+        "risk": null
+      },
+      "input_tokens": 1889,
+      "output_tokens": 105,
+      "elapsed": 3.68
+    },
+    {
+      "wechat_id": "t205364",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "转介绍25.11.19",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"客户处于考察初期，计划实地看样后再联系，无明确购买信号\",\n  \"do_this\": \"发送邻居家的产品效果图+莫妮卡摩卡主力款介绍，约定看样后1周内主动跟进\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "客户处于考察初期，计划实地看样后再联系，无明确购买信号",
+        "do_this": "发送邻居家的产品效果图+莫妮卡摩卡主力款介绍，约定看样后1周内主动跟进",
+        "risk": null
+      },
+      "input_tokens": 1881,
+      "output_tokens": 112,
+      "elapsed": 4.2
+    },
+    {
+      "wechat_id": "wxid_dp0duhomqpwi11",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "Z25.12.8西区 蓝天之外的老公",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户主动到访展厅，已到楼下待接，意向度极高\",\n  \"do_this\": \"同事立即下楼接客，准备岩石/像素/花瓣沙发样品展示，收集客户户型和预算信息为报价铺垫\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户主动到访展厅，已到楼下待接，意向度极高",
+        "do_this": "同事立即下楼接客，准备岩石/像素/花瓣沙发样品展示，收集客户户型和预算信息为报价铺垫",
+        "risk": null
+      },
+      "input_tokens": 1728,
+      "output_tokens": 113,
+      "elapsed": 3.74
+    },
+    {
+      "wechat_id": "wxid_75vkf7kot9gj29",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "Z26.3.9 铜钱床",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"浅度接触，仅询问尺寸规格，未涉及报价或购买意向\",\n  \"do_this\": \"询问卧室具体尺寸和装修进度，准备出铜钱床定制方案和参考案例\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "浅度接触，仅询问尺寸规格，未涉及报价或购买意向",
+        "do_this": "询问卧室具体尺寸和装修进度，准备出铜钱床定制方案和参考案例",
+        "risk": null
+      },
+      "input_tokens": 1892,
+      "output_tokens": 104,
+      "elapsed": 3.8
+    },
+    {
+      "wechat_id": "wxid_p3uihu4vhnut11",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "Z25.11.24牛角",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"客户装修早期（正忙装修），已确认需求（墨绿色面料）但主动说待装修后联系\",\n  \"do_this\": \"设置30天后低频回访提醒，分享牛角沙发+墨绿雪尼尔面料的完工案例图，等待装修节点\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "客户装修早期（正忙装修），已确认需求（墨绿色面料）但主动说待装修后联系",
+        "do_this": "设置30天后低频回访提醒，分享牛角沙发+墨绿雪尼尔面料的完工案例图，等待装修节点",
+        "risk": null
+      },
+      "input_tokens": 1946,
+      "output_tokens": 126,
+      "elapsed": 6.26
+    },
+    {
+      "wechat_id": "wxid_ucvmxlrjhgen11",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "Z26.1.21邻居介绍",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户已明确询问价格并收到报价，需立即推进方案确认和定金预订。\",\n  \"do_this\": \"今日内发送Alcantara面料小样和Prado沙发展厅实拍图，询问客户可否本周末到展厅体验或确认定金支付时间。\",\n  \"risk\": \"报价后沉silon不足24小时，需防止客户比价流失\"\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户已明确询问价格并收到报价，需立即推进方案确认和定金预订。",
+        "do_this": "今日内发送Alcantara面料小样和Prado沙发展厅实拍图，询问客户可否本周末到展厅体验或确认定金支付时间。",
+        "risk": "报价后沉silon不足24小时，需防止客户比价流失"
+      },
+      "input_tokens": 2163,
+      "output_tokens": 146,
+      "elapsed": 4.72
+    },
+    {
+      "wechat_id": "jingliangqian",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "Z25.8.2 南京客户可能要来佛山",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"客户在面料选择上纠结，未确认购买意向，需等待决策\",\n  \"do_this\": \"发送岩石沙发磨砂皮/纳帕皮效果图对比，强调纳帕皮耐用性优于磨砂皮，询问客户倾向哪种\",\n  \"risk\": \"客户拒绝布料材质，皮料又有保养顾虑，可能流失到全皮竞品\"\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "客户在面料选择上纠结，未确认购买意向，需等待决策",
+        "do_this": "发送岩石沙发磨砂皮/纳帕皮效果图对比，强调纳帕皮耐用性优于磨砂皮，询问客户倾向哪种",
+        "risk": "客户拒绝布料材质，皮料又有保养顾虑，可能流失到全皮竞品"
+      },
+      "input_tokens": 2074,
+      "output_tokens": 160,
+      "elapsed": 4.1
+    },
+    {
+      "wechat_id": "police-nana",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "z251122-NaNa ",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"装修早期阶段，客户主动告知需等硬装完成后再决策，无紧急推进信号。\",\n  \"do_this\": \"发送岩石沙发与护墙板、电视背景墙的搭配案例3-5张，预留其联系方式，约定硬装完成后主动回访。\",\n  \"risk\": \"设计师参与决策，可能截胡；客户沉默周期可能较长（硬装周期通常4-8周）\"\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "装修早期阶段，客户主动告知需等硬装完成后再决策，无紧急推进信号。",
+        "do_this": "发送岩石沙发与护墙板、电视背景墙的搭配案例3-5张，预留其联系方式，约定硬装完成后主动回访。",
+        "risk": "设计师参与决策，可能截胡；客户沉默周期可能较长（硬装周期通常4-8周）"
+      },
+      "input_tokens": 2009,
+      "output_tokens": 168,
+      "elapsed": 4.14
+    },
+    {
+      "wechat_id": "tingtingting226",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "z260104-Tara",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户确认产品、询问价格、主动预约展厅，装修未动工有决策窗口\",\n  \"do_this\": \"确认到访时间，准备2.8米像素沙发皮质方案报价单和实物样布，强调模块定制优势\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户确认产品、询问价格、主动预约展厅，装修未动工有决策窗口",
+        "do_this": "确认到访时间，准备2.8米像素沙发皮质方案报价单和实物样布，强调模块定制优势",
+        "risk": null
+      },
+      "input_tokens": 2244,
+      "output_tokens": 112,
+      "elapsed": 4.02
+    },
+    {
+      "wechat_id": "m747940117",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "z251222-也",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"revive\",\n  \"reason\": \"报价后6天无回应，超过48小时高危流失节点\",\n  \"do_this\": \"发送像素沙发库存效果图+摩尔雪花面料对比案例，强调原版拆解优势和交期\",\n  \"risk\": \"报价后沉默，高危流失节点\"\n}\n```",
+      "parsed": {
+        "action": "revive",
+        "reason": "报价后6天无回应，超过48小时高危流失节点",
+        "do_this": "发送像素沙发库存效果图+摩尔雪花面料对比案例，强调原版拆解优势和交期",
+        "risk": "报价后沉默，高危流失节点"
+      },
+      "input_tokens": 2067,
+      "output_tokens": 115,
+      "elapsed": 3.79
+    },
+    {
+      "wechat_id": "wxid_yq1pzwrqj8vc22",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "橙橙～",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"revive\",\n  \"reason\": \"报价后10天无回应，双十一活动已过期，需重启对话\",\n  \"do_this\": \"发送西区沙发库存实拍图+国产面料对标方案（价格13000-15000），询问是否还在考虑或需求已变\",\n  \"risk\": \"报价后沉默超48小时，活动期已过，客户可能流向竞品\"\n}\n```",
+      "parsed": {
+        "action": "revive",
+        "reason": "报价后10天无回应，双十一活动已过期，需重启对话",
+        "do_this": "发送西区沙发库存实拍图+国产面料对标方案（价格13000-15000），询问是否还在考虑或需求已变",
+        "risk": "报价后沉默超48小时，活动期已过，客户可能流向竞品"
+      },
+      "input_tokens": 2374,
+      "output_tokens": 137,
+      "elapsed": 8.15
+    },
+    {
+      "wechat_id": "wxid_xpcdxl9bajju12",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "詹亭",
+      "stratum": "medium",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户询问了具体价位、面料、尺寸，销售已报价2W出头，客户对活动感兴趣有回应\",\n  \"do_this\": \"立即发送詹亭专属的3米像素沙发棉麻方案报价单+双十一活动明细表，确认是否参与前十名抢购，推进下单节点\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户询问了具体价位、面料、尺寸，销售已报价2W出头，客户对活动感兴趣有回应",
+        "do_this": "立即发送詹亭专属的3米像素沙发棉麻方案报价单+双十一活动明细表，确认是否参与前十名抢购，推进下单节点",
+        "risk": null
+      },
+      "input_tokens": 1795,
+      "output_tokens": 138,
+      "elapsed": 3.81
+    },
+    {
+      "wechat_id": "lijiahui313",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "B-TD",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"客户已在他处购买，当前无明确需求，仅保留备选机会\",\n  \"do_this\": \"建立低频维护，每月1次分享地下室沙发搭配案例，等待客户装修地下室时主动询问\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "客户已在他处购买，当前无明确需求，仅保留备选机会",
+        "do_this": "建立低频维护，每月1次分享地下室沙发搭配案例，等待客户装修地下室时主动询问",
+        "risk": null
+      },
+      "input_tokens": 1569,
+      "output_tokens": 106,
+      "elapsed": 3.73
+    },
+    {
+      "wechat_id": "wxid_3212592126822",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "Z25.10.02",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"浅度接触仅5条消息，客户仅查看产品手册，无明确需求信号\",\n  \"do_this\": \"发送岩石/像素/花瓣三款主力沙发的效果图和客户案例，邀请客户分享户型或风格偏好\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "浅度接触仅5条消息，客户仅查看产品手册，无明确需求信号",
+        "do_this": "发送岩石/像素/花瓣三款主力沙发的效果图和客户案例，邀请客户分享户型或风格偏好",
+        "risk": null
+      },
+      "input_tokens": 1631,
+      "output_tokens": 117,
+      "elapsed": 4.37
+    },
+    {
+      "wechat_id": "a30104327",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "转介绍26.01.27",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"客户浅度接触仅4条消息，发送户型图但未主动询问产品或价格\",\n  \"do_this\": \"感谢分享户型，询问客户对哪款产品感兴趣（岩石/像素/花瓣沙发），了解使用场景和预算范围\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "客户浅度接触仅4条消息，发送户型图但未主动询问产品或价格",
+        "do_this": "感谢分享户型，询问客户对哪款产品感兴趣（岩石/像素/花瓣沙发），了解使用场景和预算范围",
+        "risk": null
+      },
+      "input_tokens": 1543,
+      "output_tokens": 122,
+      "elapsed": 3.73
+    },
+    {
+      "wechat_id": "wangxiaofei110346",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "郝欣晴",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"revive\",\n  \"reason\": \"报价后48小时无回应，客户处于高危流失节点\",\n  \"do_this\": \"发送皮埃尔蒙模块库存图+原版拆解成本说明，强调全皮海绵配比优势，询问是否需要其他尺寸组合方案\",\n  \"risk\": \"报价后沉默，高危流失节点\"\n}\n```",
+      "parsed": {
+        "action": "revive",
+        "reason": "报价后48小时无回应，客户处于高危流失节点",
+        "do_this": "发送皮埃尔蒙模块库存图+原版拆解成本说明，强调全皮海绵配比优势，询问是否需要其他尺寸组合方案",
+        "risk": "报价后沉默，高危流失节点"
+      },
+      "input_tokens": 1600,
+      "output_tokens": 132,
+      "elapsed": 4.25
+    },
+    {
+      "wechat_id": "jinjubaby",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "Q25.12.15",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"浅度互动仅4条，客户未表达明确需求，仅点头回应\",\n  \"do_this\": \"分享岩石/像素沙发的躺卧场景视频，询问'家里客厅多大，偏好哪种坐感'\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "浅度互动仅4条，客户未表达明确需求，仅点头回应",
+        "do_this": "分享岩石/像素沙发的躺卧场景视频，询问'家里客厅多大，偏好哪种坐感'",
+        "risk": null
+      },
+      "input_tokens": 1823,
+      "output_tokens": 110,
+      "elapsed": 3.56
+    },
+    {
+      "wechat_id": "wangyan468895",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "L26.1.13",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"客户处于价格咨询初期，未明确需求，缺乏场景信息\",\n  \"do_this\": \"询问客户的具体使用场景（客厅/书房）和户型面积，推荐岩石沙发入门款（8000元档）作为价格锚点\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "客户处于价格咨询初期，未明确需求，缺乏场景信息",
+        "do_this": "询问客户的具体使用场景（客厅/书房）和户型面积，推荐岩石沙发入门款（8000元档）作为价格锚点",
+        "risk": null
+      },
+      "input_tokens": 1733,
+      "output_tokens": 118,
+      "elapsed": 3.79
+    },
+    {
+      "wechat_id": "zhouchunan001",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "G25.4.23",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"浅度接触仅3条消息，客户未明确表达需求和购买意向\",\n  \"do_this\": \"根据包豪斯风格推荐像素沙发或岩石沙发，附带3-4张同款风格案例图引发兴趣\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "浅度接触仅3条消息，客户未明确表达需求和购买意向",
+        "do_this": "根据包豪斯风格推荐像素沙发或岩石沙发，附带3-4张同款风格案例图引发兴趣",
+        "risk": null
+      },
+      "input_tokens": 1520,
+      "output_tokens": 112,
+      "elapsed": 3.24
+    },
+    {
+      "wechat_id": "wxid_20ha5s4weliu21",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "G25.11.24",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户发送户型图并询问具体尺寸报价，是最强购买信号\",\n  \"do_this\": \"立即补充发送3.2米岩石沙发的渲染效果图+面料选样册，询问客户是否需要上门勘量或寄样体验\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户发送户型图并询问具体尺寸报价，是最强购买信号",
+        "do_this": "立即补充发送3.2米岩石沙发的渲染效果图+面料选样册，询问客户是否需要上门勘量或寄样体验",
+        "risk": null
+      },
+      "input_tokens": 1647,
+      "output_tokens": 116,
+      "elapsed": 4.42
+    },
+    {
+      "wechat_id": "wxid_vq0hvsbvkjan11",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "Z25.11.24像素",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"浅度互动无需求，客户未回应尺寸询问，装修节点未知\",\n  \"do_this\": \"发送像素沙发3-4个不同尺寸的效果图对比，询问客户户型大小和预算范围\",\n  \"risk\": \"客户5天未回应，可能被其他品牌截胡或需求不迫切\"\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "浅度互动无需求，客户未回应尺寸询问，装修节点未知",
+        "do_this": "发送像素沙发3-4个不同尺寸的效果图对比，询问客户户型大小和预算范围",
+        "risk": "客户5天未回应，可能被其他品牌截胡或需求不迫切"
+      },
+      "input_tokens": 1838,
+      "output_tokens": 133,
+      "elapsed": 4.11
+    },
+    {
+      "wechat_id": "lihui610081",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "Z25.6.21 岩石",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"客户仅询问产品有无，销售已展示替代方案，未进入报价阶段\",\n  \"do_this\": \"询问客户对展示的岩石沙发哪款感兴趣，了解空间尺寸和面料偏好，为后续报价做准备\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "客户仅询问产品有无，销售已展示替代方案，未进入报价阶段",
+        "do_this": "询问客户对展示的岩石沙发哪款感兴趣，了解空间尺寸和面料偏好，为后续报价做准备",
+        "risk": null
+      },
+      "input_tokens": 1556,
+      "output_tokens": 117,
+      "elapsed": 3.47
+    },
+    {
+      "wechat_id": "wxid_ao371n2oqcwy22",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "z251021-Lik-",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"浅度接触仅3条消息，客户未表达明确需求\",\n  \"do_this\": \"自我介绍品牌特色，询问客户从小红书了解到哪款产品，引导需求挖掘\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "浅度接触仅3条消息，客户未表达明确需求",
+        "do_this": "自我介绍品牌特色，询问客户从小红书了解到哪款产品，引导需求挖掘",
+        "risk": null
+      },
+      "input_tokens": 1536,
+      "output_tokens": 99,
+      "elapsed": 5.25
+    },
+    {
+      "wechat_id": "lwjjxcjuan",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "lwj",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"revive\",\n  \"reason\": \"报价后4天无回应，处于高危流失节点\",\n  \"do_this\": \"发送模块沙发2.6米组合方案图+面料对比清单，突出原版拆解成本优势，询问是否需要寄样体验\",\n  \"risk\": \"报价后沉默，高危流失节点\"\n}\n```",
+      "parsed": {
+        "action": "revive",
+        "reason": "报价后4天无回应，处于高危流失节点",
+        "do_this": "发送模块沙发2.6米组合方案图+面料对比清单，突出原版拆解成本优势，询问是否需要寄样体验",
+        "risk": "报价后沉默，高危流失节点"
+      },
+      "input_tokens": 1730,
+      "output_tokens": 120,
+      "elapsed": 3.93
+    },
+    {
+      "wechat_id": "q447649756",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "z250806-如暖阳如初夏",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"revive\",\n  \"reason\": \"报价后沉默超48小时，客户曾确认产品组合但未转化，距离最后互动已60天\",\n  \"do_this\": \"发送双十一后新库存图+岩石沙发&花瓣沙发组合方案对比图，附上客户之前选中的面料效果图，询问是否仍在考虑或需要其他尺寸方案\",\n  \"risk\": \"报价后沉默，高危流失节点\"\n}\n```",
+      "parsed": {
+        "action": "revive",
+        "reason": "报价后沉默超48小时，客户曾确认产品组合但未转化，距离最后互动已60天",
+        "do_this": "发送双十一后新库存图+岩石沙发&花瓣沙发组合方案对比图，附上客户之前选中的面料效果图，询问是否仍在考虑或需要其他尺寸方案",
+        "risk": "报价后沉默，高危流失节点"
+      },
+      "input_tokens": 1869,
+      "output_tokens": 160,
+      "elapsed": 4.22
+    },
+    {
+      "wechat_id": "wxid_5exwwff95nhb22",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "z251008-jasmine",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"nurture\",\n  \"reason\": \"初次接触浅度互动，客户仅打招呼无明确需求信号\",\n  \"do_this\": \"介绍品牌核心优势和主力产品（岩石/像素/花瓣沙发），询问客户户型和预算范围\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "nurture",
+        "reason": "初次接触浅度互动，客户仅打招呼无明确需求信号",
+        "do_this": "介绍品牌核心优势和主力产品（岩石/像素/花瓣沙发），询问客户户型和预算范围",
+        "risk": null
+      },
+      "input_tokens": 1538,
+      "output_tokens": 109,
+      "elapsed": 3.9
+    },
+    {
+      "wechat_id": "Joyce-Xx",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "睡着的考拉🐨",
+      "stratum": "shallow",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户主动询问展厅地址，要求查看图册，有明确购买意向\",\n  \"do_this\": \"立即发送产品图册+主力款对比表，附带岩石/像素/花瓣沙发的库存实拍照，邀请周末到佛山龙江展厅体验\",\n  \"risk\": \"客户等待超24小时未回应，可能转向其他品牌\"\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户主动询问展厅地址，要求查看图册，有明确购买意向",
+        "do_this": "立即发送产品图册+主力款对比表，附带岩石/像素/花瓣沙发的库存实拍照，邀请周末到佛山龙江展厅体验",
+        "risk": "客户等待超24小时未回应，可能转向其他品牌"
+      },
+      "input_tokens": 1730,
+      "output_tokens": 146,
+      "elapsed": 4.08
+    },
+    {
+      "wechat_id": "wxid_ktrhbwwc6wdu11",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "Z25.12.16",
+      "stratum": "quoted",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户确认尺寸、面料、组合方案，已获得报价12500元，未拒绝\",\n  \"do_this\": \"确认黑色雪尼尔+磨砂布双面料方案总价，发送定金流程和面料小样\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户确认尺寸、面料、组合方案，已获得报价12500元，未拒绝",
+        "do_this": "确认黑色雪尼尔+磨砂布双面料方案总价，发送定金流程和面料小样",
+        "risk": null
+      },
+      "input_tokens": 2610,
+      "output_tokens": 108,
+      "elapsed": 7.11
+    },
+    {
+      "wechat_id": "maqunchao001",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "Q25.10.1",
+      "stratum": "quoted",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户确认了产品、面料、尺寸，报价已接受，装修节点明确（明年6月）\",\n  \"do_this\": \"确认定金比例和支付方式，锁定生产周期，提醒3个月免费仓储政策细节\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户确认了产品、面料、尺寸，报价已接受，装修节点明确（明年6月）",
+        "do_this": "确认定金比例和支付方式，锁定生产周期，提醒3个月免费仓储政策细节",
+        "risk": null
+      },
+      "input_tokens": 2219,
+      "output_tokens": 110,
+      "elapsed": 5.46
+    },
+    {
+      "wechat_id": "wxid_y1x1b61s2h1c22",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "A-下单",
+      "stratum": "quoted",
+      "raw_output": "```json\n{\n  \"action\": \"revive\",\n  \"reason\": \"客户姐姐装修需沙发床，存在转介绍机会，但主客户因床架处理纠纷信任受损\",\n  \"do_this\": \"主动联系客户姐姐，了解户型尺寸和风格需求，为新客户提供专业方案，同时向主客户表达对纠纷的诚意补偿方案\",\n  \"risk\": \"主客户信任危机，前期处理不透明引发不满，转介绍成功率受影响\"\n}\n```",
+      "parsed": {
+        "action": "revive",
+        "reason": "客户姐姐装修需沙发床，存在转介绍机会，但主客户因床架处理纠纷信任受损",
+        "do_this": "主动联系客户姐姐，了解户型尺寸和风格需求，为新客户提供专业方案，同时向主客户表达对纠纷的诚意补偿方案",
+        "risk": "主客户信任危机，前期处理不透明引发不满，转介绍成功率受影响"
+      },
+      "input_tokens": 3041,
+      "output_tokens": 171,
+      "elapsed": 4.62
+    },
+    {
+      "wechat_id": "a29652756",
+      "sales_wechat_id": "wxid_p03xoj66oss112",
+      "remark": "Z26.01.21",
+      "stratum": "quoted",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户询问设计师/装饰公司合作价，已看报价并确认产品款式\",\n  \"do_this\": \"立即发送B端合作方案表（明确设计师/装企折扣点数），并询问是否需要出具正式报价单便于内部审批\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户询问设计师/装饰公司合作价，已看报价并确认产品款式",
+        "do_this": "立即发送B端合作方案表（明确设计师/装企折扣点数），并询问是否需要出具正式报价单便于内部审批",
+        "risk": null
+      },
+      "input_tokens": 2291,
+      "output_tokens": 115,
+      "elapsed": 3.8
+    },
+    {
+      "wechat_id": "min523123",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "L25.10.14像素沙发",
+      "stratum": "quoted",
+      "raw_output": "```json\n{\n  \"action\": \"drop\",\n  \"reason\": \"客户明确表示已在其他家订购，无本品牌付款记录\",\n  \"do_this\": null,\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "drop",
+        "reason": "客户明确表示已在其他家订购，无本品牌付款记录",
+        "do_this": null,
+        "risk": null
+      },
+      "input_tokens": 2569,
+      "output_tokens": 64,
+      "elapsed": 3.82
+    },
+    {
+      "wechat_id": "a36541764",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "L25.12.7施海英",
+      "stratum": "quoted",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户已确认尺寸、面料、价格，儿子刚下单购买，需立即确认订单并启动生产\",\n  \"do_this\": \"核实订单号和收货地址，发送定制周期表和后续交付流程，预约出库图审核时间\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户已确认尺寸、面料、价格，儿子刚下单购买，需立即确认订单并启动生产",
+        "do_this": "核实订单号和收货地址，发送定制周期表和后续交付流程，预约出库图审核时间",
+        "risk": null
+      },
+      "input_tokens": 2960,
+      "output_tokens": 114,
+      "elapsed": 3.97
+    },
+    {
+      "wechat_id": "zhoujingyi5603",
+      "sales_wechat_id": "wxid_am3kdib9tt3722",
+      "remark": "Z26.2.3像素",
+      "stratum": "quoted",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户明确表示十一来佛山参观，展厅预约到访信号已出现\",\n  \"do_this\": \"确认客户十一具体日期，提前预留展厅时段，准备像素沙发皮质版本现场体验，对标客户关注的饱满挺实感受\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户明确表示十一来佛山参观，展厅预约到访信号已出现",
+        "do_this": "确认客户十一具体日期，提前预留展厅时段，准备像素沙发皮质版本现场体验，对标客户关注的饱满挺实感受",
+        "risk": null
+      },
+      "input_tokens": 2759,
+      "output_tokens": 121,
+      "elapsed": 4.16
+    },
+    {
+      "wechat_id": "hefeifei525969",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "勒森家居店长菲菲",
+      "stratum": "quoted",
+      "raw_output": "```json\n{\n  \"action\": \"revive\",\n  \"reason\": \"报价后沉默超48小时，客户虽有合作意向但陷入价格僵持，需重新激活\",\n  \"do_this\": \"发送门店出样案例（同为经销商的成交案例）+ 成本拆解说明（edra原版1:1复刻vs市面通货版的用料差异），强调引流客户价值\",\n  \"risk\": \"危险价差区间（6-7K预算vs13K报价），决策人缺席（需门店老板/投资方确认），过度催单风险\"\n}\n```",
+      "parsed": {
+        "action": "revive",
+        "reason": "报价后沉默超48小时，客户虽有合作意向但陷入价格僵持，需重新激活",
+        "do_this": "发送门店出样案例（同为经销商的成交案例）+ 成本拆解说明（edra原版1:1复刻vs市面通货版的用料差异），强调引流客户价值",
+        "risk": "危险价差区间（6-7K预算vs13K报价），决策人缺席（需门店老板/投资方确认），过度催单风险"
+      },
+      "input_tokens": 3088,
+      "output_tokens": 182,
+      "elapsed": 5.43
+    },
+    {
+      "wechat_id": "gjjover",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "z251230-GAO   ",
+      "stratum": "quoted",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户确认了产品、尺寸、面料，主动询价并在预算范围内\",\n  \"do_this\": \"立即发送2.8米四拼沙发的效果图和配置详情，询问是否需要出完整方案报价单和定金流程\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户确认了产品、尺寸、面料，主动询价并在预算范围内",
+        "do_this": "立即发送2.8米四拼沙发的效果图和配置详情，询问是否需要出完整方案报价单和定金流程",
+        "risk": null
+      },
+      "input_tokens": 2376,
+      "output_tokens": 111,
+      "elapsed": 4.34
+    },
+    {
+      "wechat_id": "wxid_6i83p346ptmv22",
+      "sales_wechat_id": "wxid_cbk7hkyyp11t12",
+      "remark": "z260113-  trtr.装修中",
+      "stratum": "quoted",
+      "raw_output": "```json\n{\n  \"action\": \"rush\",\n  \"reason\": \"客户确认了4米单面贵妃位、磨砂布面料、具体尺寸和方向，报价12430元，仅差定金确认\",\n  \"do_this\": \"立即发送年前预备单政策详情，明确定金金额和支付方式，争取48小时内收定金锁单\",\n  \"risk\": null\n}\n```",
+      "parsed": {
+        "action": "rush",
+        "reason": "客户确认了4米单面贵妃位、磨砂布面料、具体尺寸和方向，报价12430元，仅差定金确认",
+        "do_this": "立即发送年前预备单政策详情，明确定金金额和支付方式，争取48小时内收定金锁单",
+        "risk": null
+      },
+      "input_tokens": 3110,
+      "output_tokens": 125,
+      "elapsed": 5.23
+    }
+  ]
+}

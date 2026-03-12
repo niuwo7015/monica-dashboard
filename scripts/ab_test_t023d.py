@@ -404,9 +404,9 @@ def diagnosis_card_html(result, model_name, color):
             <details><summary>原始输出</summary><pre>{raw}</pre></details>
         </div>'''
 
-    action = html_mod.escape(parsed.get('action', '-'))
-    reason = html_mod.escape(parsed.get('reason', '-'))
-    do_this = html_mod.escape(parsed.get('do_this', '-'))
+    action = html_mod.escape(parsed.get('action') or '-')
+    reason = html_mod.escape(parsed.get('reason') or '-')
+    do_this = html_mod.escape(parsed.get('do_this') or '-')
     risk = html_mod.escape(str(parsed.get('risk') or '无'))
 
     action_colors = {
@@ -870,8 +870,8 @@ def generate_markdown_report(input_data, all_results):
         for m in models_tested:
             r = model_lookups[m].get(wid, {})
             p = (r.get('parsed') or {})
-            action = p.get('action', '-')
-            do_this = p.get('do_this', '-')
+            action = p.get('action') or '-'
+            do_this = p.get('do_this') or '-'
             if len(do_this) > 20:
                 do_this = do_this[:18] + '..'
             row += f" {action} | {do_this} |"
