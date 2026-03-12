@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react'
-import { SALES_LIST } from '../lib/theme'
 import {
   TIME_PRESETS,
   computeDateRange,
@@ -8,14 +7,13 @@ import {
   fetchFunnelByTransaction,
   fetchPerformanceStats,
   fetchSalesFollowUp,
-  fetchRiskAndSilence,
+  fetchRiskSignals,
 } from '../lib/dashboardQueries'
 
 /* ═══════════════════════════════════════
-   T-025 Design Tokens
-   背景 #111110, 主色 #E8C47C, 成功 #6BCB77, 危险 #E85D5D
+   T-025b Design Tokens
+   背景 #111110, 主色 #E8C47C, DM Sans
    漏斗色系: #7C9CE8, #8BC7E8, #E8C47C, #E8A84C, #6BCB77
-   字体 DM Sans, 单列 540px maxWidth
    ═══════════════════════════════════════ */
 const D = {
   bg: '#111110',
@@ -26,12 +24,12 @@ const D = {
   green: '#6BCB77',
   red: '#E85D5D',
   orange: '#E8A84C',
+  yellow: '#E8C47C',
   text: '#FFFFFF',
   textBody: 'rgba(255,255,255,0.85)',
   textSub: 'rgba(255,255,255,0.6)',
   textDim: 'rgba(255,255,255,0.4)',
   textMuted: 'rgba(255,255,255,0.2)',
-  gradientBtn: 'linear-gradient(135deg, #E8C47C, #E8A84C)',
   font: '"DM Sans", "PingFang SC", -apple-system, sans-serif',
   radius: 16,
   radiusSm: 10,
@@ -60,61 +58,6 @@ function Card({ title, children, extra }) {
         {extra}
       </div>
       {children}
-    </div>
-  )
-}
-
-function ProgressRing({ value, target, size = 120, label }) {
-  const stroke = 8
-  const r = (size - stroke) / 2
-  const circ = 2 * Math.PI * r
-  const pct = Math.min(value, 100)
-  const offset = circ * (1 - pct / 100)
-  const color = value >= target ? D.green : value >= target * 0.7 ? D.gold : D.red
-
-  return (
-    <div style={{ textAlign: 'center' }}>
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={size / 2} cy={size / 2} r={r}
-          fill="none" stroke={D.border} strokeWidth={stroke} />
-        <circle cx={size / 2} cy={size / 2} r={r}
-          fill="none" stroke={color} strokeWidth={stroke}
-          strokeDasharray={circ} strokeDashoffset={offset}
-          strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 0.8s ease' }}
-        />
-      </svg>
-      <div style={{
-        marginTop: -size / 2 - 16, position: 'relative', zIndex: 1,
-        height: size / 2 + 16,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <div style={{ fontSize: 28, fontWeight: 800, color: D.text }}>{pct}%</div>
-        <div style={{ fontSize: 11, color: D.textDim }}>目标 {target}%</div>
-      </div>
-      {label && <div style={{ fontSize: 13, color: D.textSub, marginTop: 4 }}>{label}</div>}
-    </div>
-  )
-}
-
-function SalesBar({ name, done, total, color }) {
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginBottom: 4,
-      }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: D.text }}>{name}</span>
-        <span style={{ fontSize: 12, color: D.textDim }}>{done}/{total} ({pct}%)</span>
-      </div>
-      <div style={{ background: D.bg, borderRadius: 4, height: 8, overflow: 'hidden' }}>
-        <div style={{
-          width: `${pct}%`, height: '100%', borderRadius: 4,
-          background: color || D.gradientBtn,
-          transition: 'width 0.5s ease',
-        }} />
-      </div>
     </div>
   )
 }
@@ -183,37 +126,64 @@ function TimeFilter({ value, onChange, customStart, customEnd, onCustomChange })
 
 function CoverageCard({ data }) {
   if (!data) return null
+  const { pct, done, total, gap } = data
+  const color = pct >= 70 ? D.green : pct >= 49 ? D.gold : D.red
+
   return (
     <Card title="跟进覆盖率">
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
-        <ProgressRing value={data.coveragePct} target={70} label="7日覆盖率" />
-      </div>
-      <div style={{
-        display: 'flex', justifyContent: 'center', gap: 24,
-        marginTop: 12, paddingTop: 12,
-        borderTop: `1px solid ${D.borderSub}`,
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: D.green }}>{data.tasksDone}</div>
-          <div style={{ fontSize: 11, color: D.textDim }}>今日已跟</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: D.orange }}>{data.tasksPending}</div>
-          <div style={{ fontSize: 11, color: D.textDim }}>今日待跟</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: D.textBody }}>{data.totalActive}</div>
-          <div style={{ fontSize: 11, color: D.textDim }}>活跃客户</div>
+      {/* Big number */}
+      <div style={{ textAlign: 'center', marginBottom: 16 }}>
+        <div style={{ fontSize: 48, fontWeight: 800, color, fontFamily: D.font }}>
+          {pct}%
         </div>
       </div>
-      {!data.rpcAvailable && (
+
+      {/* Progress bar with 70% target line */}
+      <div style={{ position: 'relative', marginBottom: 8 }}>
         <div style={{
-          fontSize: 11, color: D.textMuted, textAlign: 'center',
-          marginTop: 8, fontStyle: 'italic',
+          background: D.bg, borderRadius: 6, height: 14, overflow: 'hidden',
         }}>
-          近似数据 · 部署SQL函数后获取精确值
+          <div style={{
+            width: `${Math.min(pct, 100)}%`, height: '100%', borderRadius: 6,
+            background: color,
+            transition: 'width 0.5s ease',
+          }} />
         </div>
-      )}
+        {/* 70% target marker */}
+        <div style={{
+          position: 'absolute', left: '70%', top: -4,
+          width: 2, height: 22, background: D.text,
+          opacity: 0.5,
+        }} />
+        <div style={{
+          position: 'absolute', left: '70%', top: -16,
+          transform: 'translateX(-50%)',
+          fontSize: 10, color: D.textDim, fontWeight: 600,
+        }}>
+          70%
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginTop: 12,
+      }}>
+        <div style={{ fontSize: 12, color: D.textSub }}>
+          已跟进 <span style={{ fontWeight: 700, color: D.green }}>{done}</span>
+          {' / '}
+          应跟进 <span style={{ fontWeight: 700, color: D.text }}>{total}</span>
+        </div>
+        {gap > 0 && (
+          <div style={{
+            fontSize: 11, color: D.red, fontWeight: 600,
+            background: 'rgba(232,93,93,0.1)',
+            padding: '2px 8px', borderRadius: D.radiusPill,
+          }}>
+            缺口 {gap} 人
+          </div>
+        )}
+      </div>
     </Card>
   )
 }
@@ -228,12 +198,18 @@ const FUNNEL_STEPS = [
   { key: 'won', label: '成交' },
 ]
 
+const FUNNEL_MODES = [
+  { key: 'acquisition', label: '按获客', desc: '选定时间内加微的客户，追踪最终转化' },
+  { key: 'transaction', label: '按成交', desc: '选定时间内各环节实际发生的动作数' },
+]
+
 function FunnelCard({ data, funnelMode, onModeChange }) {
   if (!data) return null
   const maxVal = Math.max(...FUNNEL_STEPS.map(s => data[s.key] || 0), 1)
   const firstVal = data[FUNNEL_STEPS[0].key] || 0
   const lastVal = data[FUNNEL_STEPS[FUNNEL_STEPS.length - 1].key] || 0
   const totalConvRate = firstVal > 0 ? Math.round((lastVal / firstVal) * 100) : 0
+  const modeInfo = FUNNEL_MODES.find(m => m.key === funnelMode)
 
   return (
     <Card
@@ -245,48 +221,56 @@ function FunnelCard({ data, funnelMode, onModeChange }) {
       }
     >
       {/* Toggle: 按获客 / 按成交 */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 14 }}>
-        {[
-          { key: 'acquisition', label: '按获客' },
-          { key: 'transaction', label: '按成交' },
-        ].map(m => (
-          <button
-            key={m.key}
-            onClick={() => onModeChange(m.key)}
-            style={{
-              padding: '4px 12px', fontSize: 11, fontWeight: 600,
-              borderRadius: D.radiusPill,
-              border: `1px solid ${funnelMode === m.key ? D.gold : D.border}`,
-              background: funnelMode === m.key ? 'rgba(232,196,124,0.15)' : 'transparent',
-              color: funnelMode === m.key ? D.gold : D.textDim,
-              cursor: 'pointer', fontFamily: D.font,
-              transition: 'all 0.2s',
-            }}
-          >
-            {m.label}
-          </button>
-        ))}
+      <div style={{ marginBottom: 6 }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+          {FUNNEL_MODES.map(m => (
+            <button
+              key={m.key}
+              onClick={() => onModeChange(m.key)}
+              style={{
+                padding: '4px 12px', fontSize: 11, fontWeight: 600,
+                borderRadius: D.radiusPill,
+                border: `1px solid ${funnelMode === m.key ? D.gold : D.border}`,
+                background: funnelMode === m.key ? 'rgba(232,196,124,0.15)' : 'transparent',
+                color: funnelMode === m.key ? D.gold : D.textDim,
+                cursor: 'pointer', fontFamily: D.font,
+                transition: 'all 0.2s',
+              }}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        {/* Explanation text */}
+        <div style={{ fontSize: 11, color: D.textDim, lineHeight: 1.4 }}>
+          {modeInfo?.desc}
+        </div>
       </div>
 
       {/* Funnel bars */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
         {FUNNEL_STEPS.map((step, i) => {
           const val = data[step.key] || 0
           const widthPct = maxVal > 0 ? Math.max((val / maxVal) * 100, 4) : 4
 
-          // Step-to-step conversion rate
           const prevVal = i > 0 ? (data[FUNNEL_STEPS[i - 1].key] || 0) : null
           const stepRate = prevVal && prevVal > 0
-            ? Math.round((val / prevVal) * 100)
-            : null
+            ? Math.round((val / prevVal) * 100) : null
 
-          // Total conversion rate (this step / first step)
           const totalRate = i > 0 && firstVal > 0
-            ? Math.round((val / firstVal) * 100)
-            : null
+            ? Math.round((val / firstVal) * 100) : null
 
           return (
             <div key={step.key}>
+              {/* Step-to-step arrow */}
+              {stepRate !== null && (
+                <div style={{
+                  textAlign: 'center', fontSize: 10, color: D.textMuted,
+                  margin: '-4px 0 2px',
+                }}>
+                  ↓ {stepRate}%
+                </div>
+              )}
               <div style={{
                 display: 'flex', justifyContent: 'space-between',
                 alignItems: 'center', marginBottom: 3,
@@ -296,13 +280,8 @@ function FunnelCard({ data, funnelMode, onModeChange }) {
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 12, color: D.textDim }}>{val}</span>
-                  {stepRate !== null && (
-                    <span style={{ fontSize: 11, color: D.textMuted }}>
-                      ↓{stepRate}%
-                    </span>
-                  )}
                   {totalRate !== null && (
-                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)' }}>
+                    <span style={{ fontSize: 11, color: D.textMuted }}>
                       {totalRate}%
                     </span>
                   )}
@@ -342,8 +321,16 @@ function PerformanceCard({ data }) {
     return n.toLocaleString()
   }
 
+  const cycleColor = (days) => {
+    if (days == null) return D.textDim
+    if (days <= 14) return D.green
+    if (days <= 30) return D.yellow
+    return D.red
+  }
+
   return (
     <Card title="业绩">
+      {/* Three KPI cards */}
       <div style={{
         display: 'flex', justifyContent: 'space-around', textAlign: 'center',
         marginBottom: 16,
@@ -352,7 +339,7 @@ function PerformanceCard({ data }) {
           <div style={{ fontSize: 22, fontWeight: 800, color: D.gold }}>
             {formatAmount(data.totalAmount)}
           </div>
-          <div style={{ fontSize: 11, color: D.textDim }}>总金额(元)</div>
+          <div style={{ fontSize: 11, color: D.textDim }}>成交总额(元)</div>
         </div>
         <div>
           <div style={{ fontSize: 22, fontWeight: 800, color: D.text }}>
@@ -360,16 +347,18 @@ function PerformanceCard({ data }) {
           </div>
           <div style={{ fontSize: 11, color: D.textDim }}>订单数</div>
         </div>
-        {data.depositToWonRate !== null && (
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: D.green }}>
-              {data.depositToWonRate}%
-            </div>
-            <div style={{ fontSize: 11, color: D.textDim }}>定金转全款</div>
+        <div>
+          <div style={{
+            fontSize: 22, fontWeight: 800,
+            color: cycleColor(data.avgDealCycle),
+          }}>
+            {data.avgDealCycle != null ? `${data.avgDealCycle}天` : '-'}
           </div>
-        )}
+          <div style={{ fontSize: 11, color: D.textDim }}>平均成交周期</div>
+        </div>
       </div>
 
+      {/* Per-sales breakdown */}
       {data.salesBreakdown.length > 0 && (
         <div style={{
           borderTop: `1px solid ${D.borderSub}`, paddingTop: 12,
@@ -382,9 +371,9 @@ function PerformanceCard({ data }) {
           {data.salesBreakdown.map((s, i) => {
             const maxAmt = data.salesBreakdown[0]?.amount || 1
             const pct = Math.round((s.amount / maxAmt) * 100)
-            const barColors = [D.gold, D.funnel[0], D.orange, D.green, D.red, D.funnel[1]]
+            const barColors = [D.gold, D.funnel[0], D.green]
             return (
-              <div key={i} style={{ marginBottom: 8 }}>
+              <div key={i} style={{ marginBottom: 10 }}>
                 <div style={{
                   display: 'flex', justifyContent: 'space-between',
                   marginBottom: 3,
@@ -394,6 +383,11 @@ function PerformanceCard({ data }) {
                   </span>
                   <span style={{ fontSize: 12, color: D.textDim }}>
                     {formatAmount(s.amount)} · {s.count}单
+                    {s.avgCycle != null && (
+                      <span style={{ color: cycleColor(s.avgCycle), marginLeft: 4 }}>
+                        · {s.avgCycle}天
+                      </span>
+                    )}
                   </span>
                 </div>
                 <div style={{ background: D.bg, borderRadius: 4, height: 6, overflow: 'hidden' }}>
@@ -423,21 +417,53 @@ function PerformanceCard({ data }) {
 function SalesFollowUpCard({ data }) {
   if (!data) return null
 
-  const COLORS = [D.funnel[0], D.gold, D.green, D.orange, D.red, D.funnel[1]]
+  const rateColor = (pct) => {
+    if (pct >= 50) return D.green
+    if (pct >= 30) return D.yellow
+    return D.red
+  }
 
   return (
-    <Card title="销售跟进（今日）">
-      {data.length > 0 ? data.map((s, i) => (
-        <SalesBar
-          key={s.wechatId}
-          name={s.name}
-          done={s.done}
-          total={s.total}
-          color={COLORS[i % COLORS.length]}
-        />
-      )) : (
+    <Card title="销售跟进">
+      {data.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {data.map((s) => {
+            const color = rateColor(s.pct)
+            return (
+              <div key={s.wechatId}>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  alignItems: 'center', marginBottom: 6,
+                }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: D.text }}>
+                    {s.name}
+                  </span>
+                  <span style={{ fontSize: 24, fontWeight: 800, color, fontFamily: D.font }}>
+                    {s.pct}%
+                  </span>
+                </div>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  alignItems: 'center', marginBottom: 4,
+                }}>
+                  <span style={{ fontSize: 11, color: D.textDim }}>
+                    {s.done}/{s.total} 已完成
+                  </span>
+                </div>
+                <div style={{ background: D.bg, borderRadius: 4, height: 10, overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${s.pct}%`, height: '100%', borderRadius: 4,
+                    background: color,
+                    transition: 'width 0.5s ease',
+                  }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
         <div style={{ color: D.textDim, fontSize: 13, textAlign: 'center', padding: 16 }}>
-          今日暂无任务数据
+          该时间段暂无任务数据
         </div>
       )}
     </Card>
@@ -446,57 +472,24 @@ function SalesFollowUpCard({ data }) {
 
 /* ═══ 5. Risk Signals Card ═══ */
 
-function RiskSignalCard({ riskSignals, silenceThisWeek, silenceLastWeek }) {
-  if (!riskSignals) return null
-
-  const formatDate = (iso) => {
-    if (!iso) return ''
-    const d = new Date(iso)
-    return `${d.getMonth() + 1}/${d.getDate()}`
-  }
-
-  // Silence WoW comparison badge
-  const delta = silenceThisWeek - silenceLastWeek
-  const deltaColor = delta > 0 ? D.red : delta < 0 ? D.green : D.textDim
-
-  const silenceBadge = (
-    <div style={{ textAlign: 'right' }}>
-      <div style={{ fontSize: 11, color: D.textDim }}>本周新增沉默</div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, justifyContent: 'flex-end' }}>
-        <span style={{ fontSize: 18, fontWeight: 800, color: deltaColor }}>
-          {silenceThisWeek}
-        </span>
-        <span style={{ fontSize: 11, color: D.textDim }}>
-          vs {silenceLastWeek}
-        </span>
-        {delta !== 0 && (
-          <span style={{ fontSize: 12, fontWeight: 600, color: deltaColor }}>
-            {delta > 0 ? `+${delta}` : delta}
-          </span>
-        )}
-      </div>
-    </div>
-  )
+function RiskSignalCard({ data }) {
+  if (!data) return null
 
   return (
-    <Card title="沉默预警 · Top10" extra={silenceBadge}>
-      {riskSignals.length > 0 ? (
+    <Card title="风险信号 · Top10">
+      {data.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {riskSignals.map((item, i) => {
-            // >60天 red, >30天 gold, 其他 dim
-            const dayColor = item.silenceDays > 60
-              ? D.red
-              : item.silenceDays > 30
-                ? D.gold
-                : 'rgba(255,255,255,0.4)'
+          {data.map((item, i) => {
+            const isHighRisk = item.silenceDays > 30
+            const dayColor = isHighRisk ? D.red : D.textSub
 
             return (
               <div key={i} style={{
                 background: D.bg, borderRadius: D.radiusSm,
                 padding: '12px 14px',
-                border: `1px solid ${item.silenceDays > 60 ? D.red + '40' : D.borderSub}`,
+                border: `1px solid ${isHighRisk ? D.red + '40' : D.borderSub}`,
               }}>
-                {/* Header */}
+                {/* Row 1: name + silence days */}
                 <div style={{
                   display: 'flex', justifyContent: 'space-between',
                   alignItems: 'flex-start', marginBottom: 6,
@@ -510,17 +503,16 @@ function RiskSignalCard({ riskSignals, silenceThisWeek, silenceLastWeek }) {
                     </div>
                     <div style={{
                       fontSize: 11, color: D.textDim, marginTop: 2,
+                      display: 'flex', alignItems: 'center', gap: 6,
                     }}>
-                      {item.salesName}
-                      {item.contactTag && item.contactTag !== '未分类' && (
-                        <span style={{
-                          marginLeft: 6, color: D.gold,
-                          border: `1px solid ${D.gold}44`, borderRadius: 3,
-                          padding: '0 4px', fontSize: 10,
-                        }}>
-                          {item.contactTag}
-                        </span>
-                      )}
+                      <span>{item.salesName}</span>
+                      <span style={{
+                        color: item.followUpStatus === '已跟进' ? D.green : D.orange,
+                        border: `1px solid ${item.followUpStatus === '已跟进' ? D.green + '44' : D.orange + '44'}`,
+                        borderRadius: 3, padding: '0 4px', fontSize: 10,
+                      }}>
+                        {item.followUpStatus}
+                      </span>
                     </div>
                   </div>
                   <div style={{
@@ -532,19 +524,13 @@ function RiskSignalCard({ riskSignals, silenceThisWeek, silenceLastWeek }) {
                   </div>
                 </div>
 
-                {/* Last message */}
+                {/* Row 2: last message */}
                 {item.lastMessage && (
                   <div style={{
                     fontSize: 12, color: D.textDim, lineHeight: 1.4,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     paddingTop: 6, borderTop: `1px solid ${D.borderSub}`,
                   }}>
-                    <span style={{ color: item.lastMessageSender === 'sales' ? D.textSub : D.orange }}>
-                      {item.lastMessageSender === 'sales' ? '销售' : '客户'}
-                    </span>
-                    {' '}
-                    {formatDate(item.lastMessageAt)}
-                    {'：'}
                     {item.lastMessage}
                   </div>
                 )}
@@ -562,10 +548,9 @@ function RiskSignalCard({ riskSignals, silenceThisWeek, silenceLastWeek }) {
 }
 
 /* ═══════════════════════════════════════
-   Dashboard — T-025
-   数据源: daily_tasks + contacts + orders + chat_messages
-   区块: 覆盖率 / 漏斗(双视角) / 业绩 / 销售跟进 / 沉默预警Top10
+   Dashboard Main Component — T-025b
    ═══════════════════════════════════════ */
+
 export default function Dashboard() {
   const [timePreset, setTimePreset] = useState('30d')
   const [customStart, setCustomStart] = useState('')
@@ -585,6 +570,12 @@ export default function Dashboard() {
     [timePreset, customStart, customEnd]
   )
 
+  // Today's date string
+  const todayStr = useMemo(() => {
+    const d = new Date()
+    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`
+  }, [])
+
   // Inject DM Sans font
   useEffect(() => {
     const id = 'dm-sans-font'
@@ -597,67 +588,55 @@ export default function Dashboard() {
     }
   }, [])
 
-  // Fetch sections that DON'T depend on time filter (coverage, follow-up, risk)
+  // Fetch risk signals (independent of time filter)
   useEffect(() => {
-    fetchFixedSections()
+    fetchRiskSignals().then(setRiskData).catch(console.error)
   }, [])
 
-  // Fetch sections that DO depend on time filter or funnel mode
+  // Fetch all time-dependent sections
   useEffect(() => {
-    if (dateRange.start) fetchTimeSections()
-  }, [dateRange.start, dateRange.end, funnelMode])
-
-  const fetchFixedSections = async () => {
+    if (!dateRange.start) return
     setLoading(true)
-    try {
-      const [coverageData, followUpData, riskResult] = await Promise.all([
-        fetchCoverageStats(),
-        fetchSalesFollowUp(),
-        fetchRiskAndSilence(),
-      ])
-      setCoverage(coverageData)
-      setSalesFollowUp(followUpData)
-      setRiskData(riskResult)
-    } catch (err) {
-      console.error('Dashboard fixed sections failed:', err)
-    }
-    setLoading(false)
-  }
 
-  const fetchTimeSections = async () => {
-    try {
-      const fetchFunnel = funnelMode === 'acquisition'
-        ? fetchFunnelByAcquisition
-        : fetchFunnelByTransaction
+    const fetchFunnel = funnelMode === 'acquisition'
+      ? fetchFunnelByAcquisition
+      : fetchFunnelByTransaction
 
-      const [funnelData, perfData] = await Promise.all([
-        fetchFunnel(dateRange),
-        fetchPerformanceStats(dateRange),
-      ])
+    Promise.all([
+      fetchCoverageStats(dateRange),
+      fetchFunnel(dateRange),
+      fetchPerformanceStats(dateRange),
+      fetchSalesFollowUp(dateRange),
+    ]).then(([covData, funnelData, perfData, followData]) => {
+      setCoverage(covData)
       setFunnel(funnelData)
       setPerformance(perfData)
-    } catch (err) {
-      console.error('Dashboard time sections failed:', err)
-    }
-  }
+      setSalesFollowUp(followData)
+    }).catch(err => {
+      console.error('Dashboard fetch failed:', err)
+    }).finally(() => {
+      setLoading(false)
+    })
+  }, [dateRange.start, dateRange.end, funnelMode])
 
   const handleCustomChange = (start, end) => {
     setCustomStart(start)
     setCustomEnd(end)
   }
 
-  if (loading) return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 80, fontFamily: D.font,
-    }}>
-      <div style={{ color: D.textDim, fontSize: 14 }}>加载中...</div>
-    </div>
-  )
-
   return (
     <div style={{ maxWidth: 540, margin: '0 auto', fontFamily: D.font }}>
-      {/* Time filter (affects funnel + performance) */}
+      {/* Header */}
+      <div style={{ padding: '16px 16px 0', textAlign: 'center' }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: D.gold }}>
+          管理仪表盘
+        </div>
+        <div style={{ fontSize: 12, color: D.textDim, marginTop: 4 }}>
+          {todayStr}
+        </div>
+      </div>
+
+      {/* Time filter */}
       <div style={{ padding: '0 16px' }}>
         <TimeFilter
           value={timePreset}
@@ -668,21 +647,26 @@ export default function Dashboard() {
         />
       </div>
 
-      <div style={{ padding: '8px 16px 0' }}>
-        <CoverageCard data={coverage} />
-        <FunnelCard
-          data={funnel}
-          funnelMode={funnelMode}
-          onModeChange={setFunnelMode}
-        />
-        <PerformanceCard data={performance} />
-        <SalesFollowUpCard data={salesFollowUp} />
-        <RiskSignalCard
-          riskSignals={riskData?.riskSignals}
-          silenceThisWeek={riskData?.silenceThisWeek || 0}
-          silenceLastWeek={riskData?.silenceLastWeek || 0}
-        />
-      </div>
+      {loading ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 80,
+        }}>
+          <div style={{ color: D.textDim, fontSize: 14 }}>加载中...</div>
+        </div>
+      ) : (
+        <div style={{ padding: '8px 16px 0' }}>
+          <CoverageCard data={coverage} />
+          <FunnelCard
+            data={funnel}
+            funnelMode={funnelMode}
+            onModeChange={setFunnelMode}
+          />
+          <PerformanceCard data={performance} />
+          <SalesFollowUpCard data={salesFollowUp} />
+          <RiskSignalCard data={riskData} />
+        </div>
+      )}
     </div>
   )
 }
