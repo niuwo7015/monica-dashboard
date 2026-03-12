@@ -9,6 +9,16 @@ CREATE INDEX IF NOT EXISTS idx_chat_messages_sender_wechat
   ON chat_messages(wechat_id, sender_type)
   WHERE is_system_msg = false;
 
+-- 支持LATERAL查最后一条消息（risk_top10用）
+CREATE INDEX IF NOT EXISTS idx_chat_messages_wechat_sent
+  ON chat_messages(wechat_id, sent_at DESC)
+  WHERE is_system_msg = false;
+
+-- 支持funnel_period按时间范围查对话
+CREATE INDEX IF NOT EXISTS idx_chat_messages_wechat_sent_sender
+  ON chat_messages(wechat_id, sent_at)
+  WHERE is_system_msg = false AND sender_type = 'customer';
+
 -- ═══ 1. 漏斗-按获客 (cohort) ═══
 -- 基准池 = 选定时间内add_time的客户，追踪最终转化（不限时间）
 -- 替代前端 limit(1000) 截断查询，改用服务端 COUNT + EXISTS
@@ -72,11 +82,7 @@ CREATE OR REPLACE FUNCTION dashboard_funnel_period(
   p_end date
 ) RETURNS jsonb
 LANGUAGE sql STABLE AS $$
-  WITH core_contacts AS (
-    SELECT wechat_id FROM contacts
-    WHERE sales_wechat_id = ANY(p_sales_ids)
-      AND is_deleted = 0 AND friend_type = 1
-  )
+  -- 从消息/订单侧出发，用时间范围先缩小扫描量，再反查contacts归属
   SELECT jsonb_build_object(
     'added', (
       SELECT COUNT(*) FROM contacts
@@ -88,35 +94,55 @@ LANGUAGE sql STABLE AS $$
     'conversation', (
       SELECT COUNT(DISTINCT cm.wechat_id)
       FROM chat_messages cm
-      INNER JOIN core_contacts cc ON cc.wechat_id = cm.wechat_id
       WHERE cm.sender_type = 'customer'
         AND cm.is_system_msg = false
         AND cm.sent_at >= p_start::timestamp
         AND cm.sent_at < (p_end + 1)::timestamp
+        AND EXISTS (
+          SELECT 1 FROM contacts c
+          WHERE c.wechat_id = cm.wechat_id
+            AND c.sales_wechat_id = ANY(p_sales_ids)
+            AND c.is_deleted = 0 AND c.friend_type = 1
+        )
     ),
     'quote', (
       SELECT COUNT(DISTINCT cm.wechat_id)
       FROM chat_messages cm
-      INNER JOIN core_contacts cc ON cc.wechat_id = cm.wechat_id
       WHERE cm.sender_type = 'sales'
         AND cm.is_system_msg = false
         AND cm.sent_at >= p_start::timestamp
         AND cm.sent_at < (p_end + 1)::timestamp
         AND (cm.content ~ '\d[\d,.]*\s*[万亿]?元' OR cm.content ~ '报价')
+        AND EXISTS (
+          SELECT 1 FROM contacts c
+          WHERE c.wechat_id = cm.wechat_id
+            AND c.sales_wechat_id = ANY(p_sales_ids)
+            AND c.is_deleted = 0 AND c.friend_type = 1
+        )
     ),
     'deposit', (
       SELECT COUNT(DISTINCT o.wechat_id)
       FROM orders o
-      INNER JOIN core_contacts cc ON cc.wechat_id = o.wechat_id
       WHERE o.order_stage = 'deposit'
         AND o.order_date >= p_start AND o.order_date <= p_end
+        AND EXISTS (
+          SELECT 1 FROM contacts c
+          WHERE c.wechat_id = o.wechat_id
+            AND c.sales_wechat_id = ANY(p_sales_ids)
+            AND c.is_deleted = 0 AND c.friend_type = 1
+        )
     ),
     'won', (
       SELECT COUNT(DISTINCT o.wechat_id)
       FROM orders o
-      INNER JOIN core_contacts cc ON cc.wechat_id = o.wechat_id
       WHERE o.order_stage = 'won'
         AND o.order_date >= p_start AND o.order_date <= p_end
+        AND EXISTS (
+          SELECT 1 FROM contacts c
+          WHERE c.wechat_id = o.wechat_id
+            AND c.sales_wechat_id = ANY(p_sales_ids)
+            AND c.is_deleted = 0 AND c.friend_type = 1
+        )
     )
   )
 $$;
@@ -138,7 +164,10 @@ RETURNS TABLE(
   last_sent_at timestamptz,
   task_status text
 )
-LANGUAGE sql STABLE AS $$
+LANGUAGE sql STABLE
+SET statement_timeout = '30s'
+AS $$
+  -- 优化: 先排除近7天有消息的联系人，再只对沉默联系人做LATERAL
   WITH active AS (
     SELECT c.wechat_id, c.nickname, c.remark, c.sales_wechat_id
     FROM contacts c
@@ -150,36 +179,46 @@ LANGUAGE sql STABLE AS $$
         WHERE o.wechat_id = c.wechat_id AND o.order_stage = 'won'
       )
   ),
-  last_msg AS (
-    SELECT DISTINCT ON (cm.wechat_id)
-      cm.wechat_id, cm.content, cm.sent_at
+  -- 找出近7天有任何消息的联系人（快速排除，利用sent_at索引）
+  recently_active AS (
+    SELECT DISTINCT cm.wechat_id
     FROM chat_messages cm
-    INNER JOIN active a ON a.wechat_id = cm.wechat_id
-    WHERE cm.is_system_msg = false
-      AND (cm.room_id IS NULL OR cm.room_id NOT LIKE '%@chatroom%')
-    ORDER BY cm.wechat_id, cm.sent_at DESC
+    WHERE cm.sent_at > NOW() - INTERVAL '7 days'
+      AND cm.is_system_msg = false
+      AND EXISTS (SELECT 1 FROM active a WHERE a.wechat_id = cm.wechat_id)
   ),
-  last_task AS (
-    SELECT DISTINCT ON (dt.contact_wechat_id)
-      dt.contact_wechat_id, dt.status
-    FROM daily_tasks dt
-    INNER JOIN active a ON a.wechat_id = dt.contact_wechat_id
-    ORDER BY dt.contact_wechat_id, dt.task_date DESC
+  -- 沉默候选人 = 活跃联系人 - 近7天有消息的
+  candidates AS (
+    SELECT a.* FROM active a
+    WHERE NOT EXISTS (SELECT 1 FROM recently_active ra WHERE ra.wechat_id = a.wechat_id)
+  ),
+  -- 只对沉默候选人做LATERAL（数量远小于9219）
+  with_last_msg AS (
+    SELECT
+      cd.wechat_id, cd.nickname, cd.remark, cd.sales_wechat_id,
+      lm.content AS last_content,
+      lm.sent_at AS last_sent_at,
+      COALESCE(EXTRACT(DAY FROM NOW() - lm.sent_at)::int, 999) AS silence_days
+    FROM candidates cd
+    LEFT JOIN LATERAL (
+      SELECT cm.content, cm.sent_at
+      FROM chat_messages cm
+      WHERE cm.wechat_id = cd.wechat_id
+        AND cm.is_system_msg = false
+        AND (cm.room_id IS NULL OR cm.room_id NOT LIKE '%@chatroom%')
+      ORDER BY cm.sent_at DESC
+      LIMIT 1
+    ) lm ON true
   )
   SELECT
-    a.wechat_id,
-    a.nickname,
-    a.remark,
-    a.sales_wechat_id,
-    COALESCE(EXTRACT(DAY FROM NOW() - lm.sent_at)::int, 999) AS silence_days,
-    lm.content AS last_content,
-    lm.sent_at AS last_sent_at,
-    lt.status AS task_status
-  FROM active a
-  LEFT JOIN last_msg lm ON lm.wechat_id = a.wechat_id
-  LEFT JOIN last_task lt ON lt.contact_wechat_id = a.wechat_id
-  WHERE COALESCE(EXTRACT(DAY FROM NOW() - lm.sent_at)::int, 999) >= 7
-  ORDER BY silence_days DESC
+    t.wechat_id, t.nickname, t.remark, t.sales_wechat_id,
+    t.silence_days, t.last_content, t.last_sent_at,
+    (SELECT dt.status FROM daily_tasks dt
+     WHERE dt.contact_wechat_id = t.wechat_id
+     ORDER BY dt.task_date DESC LIMIT 1
+    ) AS task_status
+  FROM with_last_msg t
+  ORDER BY t.silence_days DESC
   LIMIT 10
 $$;
 
