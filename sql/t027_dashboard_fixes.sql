@@ -28,7 +28,9 @@ CREATE OR REPLACE FUNCTION dashboard_funnel_cohort(
   p_start date,
   p_end date
 ) RETURNS jsonb
-LANGUAGE sql STABLE AS $$
+LANGUAGE sql STABLE
+SET statement_timeout = '30s'
+AS $$
   WITH cohort AS (
     SELECT wechat_id FROM contacts
     WHERE sales_wechat_id = ANY(p_sales_ids)
@@ -81,7 +83,9 @@ CREATE OR REPLACE FUNCTION dashboard_funnel_period(
   p_start date,
   p_end date
 ) RETURNS jsonb
-LANGUAGE sql STABLE AS $$
+LANGUAGE sql STABLE
+SET statement_timeout = '30s'
+AS $$
   -- 从消息/订单侧出发，用时间范围先缩小扫描量，再反查contacts归属
   SELECT jsonb_build_object(
     'added', (
