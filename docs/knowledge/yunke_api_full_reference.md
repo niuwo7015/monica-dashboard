@@ -1,251 +1,152 @@
-# 云客API完整参考手册
+# 云客API完整参考文档
 
-> 最后更新：2026-03-09 (S-004 Round 3)
-> 来源：官方文档 (crm.yunkecn.com/cms/settings/openPreView) + 实测验证
-
-## 认证方式
-
-- **Base URL**: `https://phone.yunkecn.com`
-- **Method**: POST (所有接口)
-- **Content-Type**: `application/json`
-
-### 签名 Headers
-
-| Header | 值 |
-|--------|---|
-| `partnerId` | `pDB33ABE148934DD081FD7D4C80654195` |
-| `company` | `5fri8k` |
-| `timestamp` | 当前毫秒时间戳 |
-| `sign` | `MD5(SIGN_KEY + COMPANY + PARTNER_ID + timestamp).toUpperCase()` |
-
-### API限制
-- **API到期日: 2026-03-20**
-- 数据保留: 约6个月
-- 限流响应: `message` 含 "请勿频繁操作" 或 "频繁"
-- 限流恢复: sleep(60)，连续5次限流后 sleep(120)
-- 响应格式: `{message: "success", data: {...}}` — 没有 `code` 字段
+> 文档生成时间: 2026-03-09
+> 来源: https://crm.yunkecn.com/cms/settings/openPreView (基础版 + 高级版)
 
 ---
 
-## 接口1: `/open/wechat/allRecords` — 增量获取员工聊天数据
+## 一、9个核心问题的回答
 
-**用途**: 按公司维度增量拉取所有员工的聊天消息（私聊+群聊）
+### Q1: 是否有webhook/事件回调机制？
 
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `timestamp` | long | 是 | 13位毫秒时间戳，查询该时间点往后1小时的数据 |
-| `createTimestamp` | long | 否 | 辅助分页用（当1小时内数据>单页时） |
+**有，但有限制。**
 
-**约束**:
-- timestamp 必须 < 当前时间 - 30分钟
-- 每次返回1小时窗口的数据
-- 返回所有消息类型（文本、图片、语音、视频、文件、链接等）
+- **基础版**只有一个回调：**添加微信好友结果状态回调**，仅推送好友添加的结果（待验证/成功/失败），**不推送新聊天消息**。需在PC管理后台→接口申请配置页面→回调配置中配置。
+- **高级版（渠道专用）** 2025-10-16新增了：获取所有回调类型接口 + 设置回调地址接口。标注为"渠道专用"，需确认账号权限。
+- **微联络模块**（高级版）有多个回调接口：新增好友事件上报、加好友任务结果上报、群发任务结果上报、离线通知等。
+- **结论：基础版没有聊天消息的webhook。如需实时推送，需升级到高级版或使用微联络模块。当前方案只能用轮询。**
 
-**响应 data**:
-```json
-{
-  "messages": [...],
-  "end": 1709000000000,
-  "hasNext": true
-}
-```
+### Q2: allRecords接口的真实限流是多少？
 
-**消息字段**:
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `msgSvrId` | string | 消息唯一ID |
-| `mine` | bool | true=销售发送, false=客户发送 |
-| `wechatId` | string | 销售微信号 |
-| `talker` | string | 对方wxid（私聊=客户, 群聊=发言者） |
-| `text` | string | 消息内容 |
-| `type` | string | 消息类型 (1=文本, 3=图片, 34=语音, 43=视频, 47=表情, 49=链接/文件, 10000=系统) |
-| `timestamp` | long | 消息时间（毫秒） |
-| `file` | string | 文件URL（图片/语音/视频） |
-| `roomid` | string | 群ID（群消息才有） |
-| `oriTalker` | string | 原始发言者（群消息） |
+**5秒调用一次。**
 
-**已知问题**:
-- 不返回群聊中的客户文本（只有系统消息和格式消息）
-- 回补历史数据时返回0条（可能受数据保留期限制）
+- 接口：`/open/wechat/allRecords`
+- 限频：**5秒内最多调用一次**（文档原文）
+- **重大更新（2026-01-12）：取消了每次最多返回2000条的限制！** 现在不限返回条数。
+- 按公司码拉取全部，根据timestamp增量拉取**1小时内**的全部微信数据
+- timestamp参数：**13位毫秒时间戳**
+- timestamp需小于当前时间30分钟以上（数据存储有延迟）
+- 用返回的`end`值作为下次查询的开始时间
+- 支持所有消息类型（文本、图片、短语音、视频、文件、链接、定位、GIF、引用、拍一拍、名片、系统消息等）
 
----
+### Q3: records接口的真实限流是多少？
 
-## 接口2: `/open/wechat/records` — 获取指定好友/群聊天记录
+**分两种场景，限流不同：**
 
-**用途**: 按好友wxid或群ID拉取聊天记录
-**支持**: 个人好友wxid **和** 群ID(@chatroom) 均可 (已实测验证)
-**只返回**: 文本(type=1) 和 语音(type=34) 消息
+- 接口：`/open/wechat/records`
+- **场景1（时间戳翻页）**：timestamp + direction参数 → **5秒调用一次**
+- **场景2（时间区间查询）**：start + end参数 → **2秒调用一次**，时间间隔不超过3天
+- 需要传 friendWechatId + wechatId + userId（按好友逐个查询）
+- **只返回文本和短语音消息**（不像allRecords返回所有类型）
+- start/end格式：**日期字符串**，如 `"2020-04-22 13:39:29"`
+- S-004测试2秒可行是正确的（场景2的限频就是2秒）
+### Q4: 是否有批量导出/全量拉取接口？
 
-### 场景1: 游标分页模式
+**有！allRecords就是。**
 
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `friendWechatId` | string | 是 | 好友wxid 或 群ID(@chatroom) |
-| `wechatId` | string | 是 | 销售微信号 |
-| `userId` | string | 是 | partnerId |
-| `timestamp` | long | 否 | 13位毫秒时间戳，游标起点 |
-| `direction` | string | 否 | `"up"` 向前翻页 / `"down"` 向后翻页 |
+- allRecords (`/open/wechat/allRecords`) 按公司码拉取**全部员工的全部聊天数据**，不需要按好友逐个拉
+- 每次返回1小时窗口的数据，**不再有2000条上限**（2026-01-12更新）
+- 这才是正确的拉取方式，不需要先获取好友列表再逐个拉records
+- 高级版还有**冷库接口** `open/wechat/wechatHistoryChatRecord`，用于查2024-02-01之前的历史数据
 
-**限流**: ≥ 5秒/次
-**注意**: 不能只传direction不传timestamp，会报"时间参数错误"
+### Q5: getAllFriendsIncrement vs friends接口的区别？
 
-### 场景2: 时间范围模式（回补用）
+**getAllFriendsIncrement是增量查询接口，是目前推荐的好友列表接口。**
 
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `friendWechatId` | string | 是 | 好友wxid 或 群ID(@chatroom) |
-| `wechatId` | string | 是 | 销售微信号 |
-| `userId` | string | 是 | partnerId |
-| `start` | string | 是 | **日期字符串** `"yyyy-MM-dd HH:mm:ss"` |
-| `end` | string | 是 | **日期字符串** `"yyyy-MM-dd HH:mm:ss"` |
+- 接口：`/open/wechat/getAllFriendsIncrement`
+- 限频：**5秒调用一次**
+- 解决了老版getAllFriendsV2的慢查询问题
+- 支持两种查询模式：`queryMode=createTime`（按创建时间）或 `queryMode=updateTime`（按更新时间）
+- 返回最多2000条/次（相同时间数据可能超2000）
+- **有lastChatTime字段**（13位时间戳），可用来筛选有聊天记录的好友
+- 时间格式：`yyyy-MM-dd HH:mm:ss`（日期字符串）
+- 增量机制：用返回的`queryEndTime` + 1秒作为下次的`startTime`
 
-**限流**: ≥ 2秒/次
-**最大跨度**: 3天
+**优化建议：用getAllFriendsIncrement的lastChatTime字段预筛选有聊天的好友，跳过从未聊天的。**
 
-> **BUG警告**: 旧代码(yunke_backfill.py)用整数时间戳传start/end，必须改为日期字符串！
-> 错误: `{"start": 1709000000, "end": 1709259200}` → "时间格式有误"
-> 正确: `{"start": "2025-12-01 00:00:00", "end": "2025-12-03 23:59:59"}`
+### Q6: start/end参数的真实格式？
 
----
+**取决于接口，两种格式都存在：**
 
-## 接口3: `/open/wechat/friends` — 好友列表（分页）
+| 接口 | 参数名 | 格式 | 示例 |
+|------|--------|------|------|
+| allRecords | timestamp | **13位毫秒时间戳** | `1664899200000` |
+| records（场景1） | timestamp | **13位毫秒时间戳** | `1524799715000` |
+| records（场景2） | start/end | **日期字符串** | `"2020-04-22 13:39:29"` |
+| getAllFriendsIncrement | startTime | **日期字符串** | `"2022-01-05 00:00:00"` |
+| 冷库 wechatHistoryChatRecord | start | **13位毫秒时间戳** | `1743131046000` |
 
-**用途**: 按销售账号分页获取好友/群列表
+**结论：技术文档说"秒级时间戳"是错误的。allRecords用13位毫秒时间戳，records的时间区间模式用日期字符串。**
 
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `wechatId` | string | 是 | 销售微信号 |
-| `pageIndex` | int | 是 | 页码（从1开始） |
-| `pageSize` | int | 是 | 每页数量（最大100） |
-| `type` | int | 否 | 1=联系人, 2=群 |
+### Q7: 是否有增量拉取机制？
 
-**响应 data**:
-```json
-{
-  "pageSize": 20,
-  "pageIndex": 1,
-  "totalCount": 3277,
-  "pageCount": 164,
-  "page": [...]
-}
-```
+**有，所有主要接口都支持增量。**
 
-**好友字段**:
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `id` | string | 好友微信ID（注意不是`wechatId`！） |
-| `name` | string | 昵称 |
-| `alias` | string | 微信号 |
-| `remark` | string | 备注名 |
-| `type` | int | 1=联系人, 2=群成员 |
-| `fromType` | string | 来源类型 |
-| `headUrl` | string | 头像URL |
-| `phone` | string | 手机号 |
-| `gender` | int | 性别 (0=未知, 1=男, 2=女) |
-| `region` | string | 地区 |
-| `createTime` | long | 创建时间（秒级时间戳） |
-| `addTime` | long | 添加时间（秒级时间戳） |
-| `delete` | int | 1=已删除 |
+- **allRecords**：用返回的`end`值作为下次的`timestamp`，实现游标式增量拉取。还有`createTimestamp`参数处理同一时间超2000条的情况。
+- **records（场景1）**：timestamp + direction(up/down) 翻页机制
+- **getAllFriendsIncrement**：用返回的`queryEndTime` + 1秒作为下次`startTime`
+- **冷库接口**：同allRecords机制，用返回的`end`作为下次的`start`
+
+### Q8: API调用配额/日限额？
+
+**文档中没有提到每日总调用次数限制。** 只有单次调用的频率限制（5秒/次或2秒/次）。没有发现日配额、月配额或总量限制的说明。
+
+### Q9: 高级版 vs 基础版有什么区别？
+
+| 特性 | 基础版 | 高级版 |
+|------|--------|--------|
+| 聊天数据 | allRecords（实时）+ records（按好友） | 冷库历史聊天记录（2024-02前） |
+| 好友列表 | getAllFriendsIncrement | 无独立接口 |
+| 回调/Webhook | 仅好友添加回调 | 获取所有回调类型 + 设置回调地址（渠道专用） |
+| 额外模块 | 无 | 抖音、小红书、AI外呼、whatsApp、定位同步、推送消息给手机端 |
+| 沟通统计 | 无 | 微信沟通人数统计、好友沟通统计详情 |
 
 ---
 
-## 接口4: `/open/wechat/getAllFriendsIncrement` — 增量获取好友/群
+## 二、鉴权机制
 
-> **注意**: 端点是 `getAllFriendsIncrement`，不是 `getAllFriends`！
-
-**用途**: 增量获取好友或群列表，支持按创建/更新时间查询
-**已实测验证**: 2026-03-09
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `wechatId` | string | 是 | 销售微信号 |
-| `type` | int | 是 | 1=好友, 2=群 |
-| `getFirstData` | bool | 否 | 是否获取第一批数据 |
-| `queryMode` | string | 否 | `"createTime"` 或 `"updateTime"` |
-| `startTime` | string | 否 | **日期字符串** `"yyyy-MM-dd HH:mm:ss"` |
-
-**特点**:
-- 单次最多返回2000条
-- 返回 `lastChatTime` 字段（毫秒时间戳，好友最后聊天时间）
-- 翻页: 用返回的 `queryEndTime` + 1秒 作为下次的 `startTime`
-- 返回 `total` 计数
-
-**响应示例**:
-```json
-{
-  "message": "查询成功",
-  "data": {
-    "total": 173,
-    "data": [
-      {
-        "id": "wxid_xxx",
-        "name": "昵称",
-        "remark": "备注",
-        "lastChatTime": 1767599021000,
-        "type": 1,
-        "createTime": "2024-07-10 15:29:15"
-      }
-    ]
-  }
-}
-```
+- **Header参数**：company, partnerId, timestamp, key, sign, Content-Type
+- **签名算法**：`sign = MD5(key + company + partnerId + timestamp).toUpperCase()`
+- **timestamp**：Unix毫秒时间戳（13位），服务端校验±5分钟内有效
 
 ---
 
-## 接口5: `/open/wechat/getRecordsByMsgId` — 文件补充链接
+## 三、优化建议
 
-**用途**: 为allRecords返回的消息补充文件URL（图片/语音/视频/文件）
+### 当前方案的问题
+用records接口按好友逐个拉取，13000好友×10秒/次 = 36小时，而且records只返回文本+语音。
 
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `msgSvrIds` | string | 是 | **逗号分隔字符串**，如 `"id1,id2,id3"` |
-| `wechatId` | string | 否 | 销售微信号（提供可加速，限流30s vs 60s） |
+### 推荐方案：改用allRecords
 
-**约束**:
-- 单次最多100个ID
-- 不带wechatId: 限流 ≥ 60秒/次
-- 带wechatId: 限流 ≥ 30秒/次
+1. **用allRecords替代records**：按公司维度拉取，1小时一个窗口，5秒/次，不限条数。不需要好友列表。
+2. **速度估算**：假设有1年数据 = 8760小时窗口 × 5秒 = 12.2小时。很多小时可能没数据（快速跳过），实际更快。
+3. **allRecords返回所有消息类型**，数据更完整。
+4. **增量维护**：首次全量拉取后，定时用allRecords增量拉取新数据。
 
-> **BUG警告**: msgSvrIds 是逗号分隔字符串，不是JSON数组！
-> 错误: `{"msgSvrIds": ["id1", "id2"]}`
-> 正确: `{"msgSvrIds": "id1,id2"}`
+### 关于实时推送
+- 基础版无聊天消息webhook，只能轮询
+- 用allRecords每5秒轮询一次，延迟约30分钟（timestamp需小于当前时间30分钟）
 
 ---
 
-## 接口6: `/open/trans/wechatAmrTrans` — 语音转码
+## 四、重要勘误
 
-**状态**: 已测试
-**结论**: AMR→MP3格式转换（非语音转文字），受IP白名单限制，不可用
+### [2026-03-09] allRecords 群聊数据结论修正
+
+- **旧结论（已作废）**：~~allRecords不返回群内客户文本，群聊需用records接口补充~~
+- **新结论（T-001群聊验证确认）**：allRecords 已确认包含群聊客户消息（`mine=false` 的群聊记录即为客户发言），无需再用 records 接口补充群聊数据
+- **验证方式**：T-001全量同步过程中，从allRecords返回数据中筛选群聊（roomWechatId非空）+ mine=false，确认包含客户文本消息
+- **影响**：CLAUDE.md 中"allRecords不返回群聊客户文本"规则同步废弃；全量/增量同步方案不再需要 records 接口作为群聊补充
 
 ---
 
-## 销售微信号
+## 五、更新日志摘要（与本项目相关的）
 
-| wxid | 姓名 |
+| 日期 | 内容 |
 |------|------|
-| `wxid_am3kdib9tt3722` | 可欣(乐乐) |
-| `wxid_p03xoj66oss112` | 小杰(jay) |
-| `wxid_cbk7hkyyp11t12` | 霄剑(Chen) |
-| `wxid_aufah51bw9ok22` | Fiona |
-| `wxid_idjldooyihpj22` | 晴天喵 |
-| `wxid_rxc39paqvic522` | Joy |
-
----
-
-## 关键数据表
-
-### chat_messages
-- `msg_svr_id` (UNIQUE) — 消息去重键
-- `wechat_id` — 客户/发言者wxid
-- `sender_type` — 'sales' / 'customer'
-- `content` — 文本内容
-- `msg_type` — 消息类型
-- `sent_at` — 发送时间(UTC)
-- `file_url` — 文件URL
-- `room_id` — 群ID（私聊为NULL）
-- `sales_id` — 销售UUID
-- `customer_id` — 客户UUID
-
-### contacts
-- `wechat_id` + `sales_wechat_id` (UNIQUE) — 联合唯一
-- 13,826条记录（截至2026-03-08）
+| 2026-01-12 | **allRecords取消2000条上限** |
+| 2025-10-16 | 高级版新增回调类型查询和设置回调地址接口 |
+| 2025-08-12 | getAllFriendsIncrement增加description和noteDes字段 |
+| 2025-06-25 | 获取微信好友/微信群接口增加10分钟请求频率限制 |
+| 2025-04-29 | 新增微信查询历史聊天记录（冷库）接口 |
+| 2025-11-27 | allRecords新增个人名片、系统消息类型返回 |
