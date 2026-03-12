@@ -302,19 +302,20 @@ def map_payment_status(raw_status):
 
 
 def build_wechat_lookup(supabase):
-    """从contacts表构建 alias/remark → wechat_id 的反查映射
+    """从contacts表构建反查映射和详情映射
 
-    返回两个字典：
+    返回三个字典：
         exact_map: {alias或remark精确值: wechat_id} （唯一匹配）
         ambiguous: {alias或remark值: [wechat_id列表]} （多个匹配，需跳过）
+        contact_details: {wechat_id: {alias, nickname, add_time}} （用于填充orders）
     """
     logger.info("构建contacts反查映射表...")
-    # 拉取所有contacts的wechat_id, wechat_alias, remark
+    # T-026c: 多拉 nickname, add_time 用于写入orders
     all_contacts = []
     offset = 0
     while True:
         r = (supabase.table('contacts')
-             .select('wechat_id,wechat_alias,remark')
+             .select('wechat_id,wechat_alias,remark,nickname,add_time')
              .range(offset, offset + 999)
              .execute())
         if not r.data:
@@ -328,10 +329,17 @@ def build_wechat_lookup(supabase):
 
     # 构建映射：key → set of wechat_ids
     key_to_wxids = {}
+    # T-026c: wxid → 详情（alias, nickname, add_time）
+    contact_details = {}
     for c in all_contacts:
         wxid = c.get('wechat_id', '')
         if not wxid:
             continue
+        contact_details[wxid] = {
+            'alias': (c.get('wechat_alias') or '').strip(),
+            'nickname': (c.get('nickname') or '').strip(),
+            'add_time': c.get('add_time'),
+        }
         for field in ('wechat_alias', 'remark'):
             val = (c.get(field) or '').strip()
             if val:
@@ -347,7 +355,8 @@ def build_wechat_lookup(supabase):
             ambiguous[key] = list(wxids)
 
     logger.info(f"  反查映射: {len(exact_map)}个唯一匹配, {len(ambiguous)}个歧义项")
-    return exact_map, ambiguous
+    logger.info(f"  详情映射: {len(contact_details)}个contacts")
+    return exact_map, ambiguous, contact_details
 
 
 def resolve_wechat_id(raw_value, exact_map, ambiguous):
@@ -390,13 +399,14 @@ def resolve_wechat_id(raw_value, exact_map, ambiguous):
     return None, 'no_match'
 
 
-def parse_rows(rows, source_tag, wechat_lookup=None):
+def parse_rows(rows, source_tag, wechat_lookup=None, contact_details=None):
     """将表格行解析为订单记录
 
     Args:
         rows: 表格数据（含表头）
         source_tag: 来源标识，用于生成唯一的feishu_record_id
         wechat_lookup: (exact_map, ambiguous) 反查映射，None则不做反查
+        contact_details: {wechat_id: {alias, nickname, add_time}} 联系人详情
     """
     if not rows or len(rows) < 2:
         logger.warning("表格数据不足（无数据行）")
@@ -406,6 +416,7 @@ def parse_rows(rows, source_tag, wechat_lookup=None):
     logger.info(f"表头: {[str(h)[:15] for h in header[:26] if h]}")
 
     exact_map, ambiguous = wechat_lookup or ({}, {})
+    contact_details = contact_details or {}
 
     orders = []
     skipped = 0
@@ -485,6 +496,12 @@ def parse_rows(rows, source_tag, wechat_lookup=None):
         shipping_date = parse_date(cell(row, COL_SHIPPING_DATE))
         logistics_company = cell(row, COL_LOGISTICS) or None
 
+        # T-026c: 从contacts表补充 微信号、微信昵称、加微信时间
+        detail = contact_details.get(wechat_id, {})
+        wx_alias = detail.get('alias') or None
+        wx_nickname = detail.get('nickname') or None
+        wx_add_time = detail.get('add_time') or None
+
         order = {
             'wechat_id': wechat_id,
             'order_date': order_date,
@@ -511,6 +528,9 @@ def parse_rows(rows, source_tag, wechat_lookup=None):
             'production_status': production_status,
             'shipping_date': shipping_date,
             'logistics_company': logistics_company,
+            'wechat_alias': wx_alias,
+            'nickname': wx_nickname,
+            'add_time': wx_add_time,
             'updated_at': datetime.now(timezone.utc).isoformat(),
         }
 
@@ -663,8 +683,10 @@ def main():
         sys.exit(1)
 
     # 1b. T-026b: 构建contacts反查映射（用于将飞书alias→wxid）
+    # T-026c: 同时返回contact_details用于填充 wechat_alias, nickname, add_time
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-    wechat_lookup = build_wechat_lookup(supabase)
+    exact_map, ambiguous, contact_details = build_wechat_lookup(supabase)
+    wechat_lookup = (exact_map, ambiguous)
 
     all_orders = []
 
@@ -679,7 +701,7 @@ def main():
             row_count = sheets[0].get('grid_properties', {}).get('row_count', 2000)
             rows = read_spreadsheet(token, wiki_spreadsheet_token, sheet_id, row_count)
             if rows:
-                orders = parse_rows(rows, 'wiki2026', wechat_lookup)
+                orders = parse_rows(rows, 'wiki2026', wechat_lookup, contact_details)
                 all_orders.extend(orders)
     else:
         logger.error("无法解析wiki节点，跳过wiki表格")
@@ -698,7 +720,7 @@ def main():
                 rows = read_spreadsheet(token, st, sheet_id, row_count)
                 if rows:
                     tag = f"sheet_{st[:8]}"
-                    orders = parse_rows(rows, tag, wechat_lookup)
+                    orders = parse_rows(rows, tag, wechat_lookup, contact_details)
                     all_orders.extend(orders)
 
     logger.info(f"\n总计: {len(all_orders)} 条订单待同步")
