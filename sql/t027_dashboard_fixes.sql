@@ -196,15 +196,15 @@ AS $$
     SELECT a.* FROM active a
     WHERE NOT EXISTS (SELECT 1 FROM recently_active ra WHERE ra.wechat_id = a.wechat_id)
   ),
-  -- 只对沉默候选人做LATERAL（数量远小于9219）
+  -- 只保留曾经有过聊天记录的联系人（排除僵尸联系人）
   with_last_msg AS (
     SELECT
       cd.wechat_id, cd.nickname, cd.remark, cd.sales_wechat_id,
       lm.content AS last_content,
       lm.sent_at AS last_sent_at,
-      COALESCE(EXTRACT(DAY FROM NOW() - lm.sent_at)::int, 999) AS silence_days
+      EXTRACT(DAY FROM NOW() - lm.sent_at)::int AS silence_days
     FROM candidates cd
-    LEFT JOIN LATERAL (
+    INNER JOIN LATERAL (
       SELECT cm.content, cm.sent_at
       FROM chat_messages cm
       WHERE cm.wechat_id = cd.wechat_id

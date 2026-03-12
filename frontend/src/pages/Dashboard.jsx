@@ -613,10 +613,10 @@ export default function Dashboard() {
       : fetchFunnelByTransaction
 
     Promise.all([
-      fetchCoverageStats(dateRange),
-      fetchFunnel(dateRange),
-      fetchPerformanceStats(dateRange),
-      fetchSalesFollowUp(dateRange),
+      fetchCoverageStats(dateRange, timePreset),
+      fetchFunnel(dateRange, timePreset),
+      fetchPerformanceStats(dateRange, timePreset),
+      fetchSalesFollowUp(dateRange, timePreset),
     ]).then(([covData, funnelData, perfData, followData]) => {
       setCoverage(covData)
       setFunnel(funnelData)
