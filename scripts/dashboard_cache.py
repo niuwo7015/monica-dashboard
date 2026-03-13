@@ -119,7 +119,7 @@ def fetch_coverage(sb, start, end):
 
         total = len(all_data)
         done = sum(1 for t in all_data if t.get('status') == 'done')
-        pct = round(done / total * 100) if total > 0 else 0
+        pct = round(done / total * 100, 1) if total > 0 else 0
         return {'pct': pct, 'done': done, 'total': total, 'gap': total - done}
     except Exception as e:
         logger.warning(f"coverage failed: {e}")
@@ -135,8 +135,8 @@ def fetch_performance(sb, start, end):
         offset = 0
         while True:
             q = sb.table('orders').select(
-                'amount, wechat_id, order_date, deal_cycle_days, sales_wechat_id'
-            ).eq('order_stage', 'won')
+                'amount, wechat_id, order_date, deal_cycle_days, sales_wechat_id, order_stage'
+            ).in_('order_stage', ['won', 'deposit'])
             if start:
                 q = q.gte('order_date', start.isoformat())
             if end:
@@ -148,6 +148,11 @@ def fetch_performance(sb, start, end):
                 break
             offset += page_size
 
+        # 成交 = won + deposit(amount>1000)
+        # deposit amount<=1000 是阶段1订金，不算成交
+        all_orders = [o for o in all_orders
+                      if o.get('order_stage') == 'won'
+                      or (o.get('order_stage') == 'deposit' and float(o.get('amount') or 0) > 1000)]
         total_amount = sum(float(o.get('amount') or 0) for o in all_orders)
         total_orders = len(all_orders)
         avg_price = round(total_amount / total_orders) if total_orders > 0 else 0
@@ -222,7 +227,7 @@ def fetch_follow_up(sb, start, end):
 
         result = []
         for s in sales_map.values():
-            s['pct'] = round(s['done'] / s['total'] * 100) if s['total'] > 0 else 0
+            s['pct'] = round(s['done'] / s['total'] * 100, 1) if s['total'] > 0 else 0
             result.append(s)
         return result
     except Exception as e:

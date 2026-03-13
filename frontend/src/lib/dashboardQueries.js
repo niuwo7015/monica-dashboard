@@ -204,8 +204,8 @@ export async function fetchPerformanceStats(dateRange, preset) {
   while (true) {
     let q = supabase
       .from('orders')
-      .select('amount, wechat_id, order_date, deal_cycle_days, sales_wechat_id')
-      .eq('order_stage', 'won')
+      .select('amount, wechat_id, order_date, deal_cycle_days, sales_wechat_id, order_stage')
+      .in('order_stage', ['won', 'deposit'])
     if (start) q = q.gte('order_date', start)
     if (end) q = q.lte('order_date', end)
     q = q.range(offset, offset + pageSize - 1)
@@ -216,7 +216,10 @@ export async function fetchPerformanceStats(dateRange, preset) {
     offset += pageSize
   }
 
-  const list = allOrders
+  // 成交 = won + deposit(amount>1000)，deposit<=1000是阶段1订金不算成交
+  const list = allOrders.filter(o =>
+    o.order_stage === 'won' || (o.order_stage === 'deposit' && (parseFloat(o.amount) || 0) > 1000)
+  )
   const totalAmount = list.reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0)
   const totalOrders = list.length
   const avgUnitPrice = totalOrders > 0 ? Math.round(totalAmount / totalOrders) : 0

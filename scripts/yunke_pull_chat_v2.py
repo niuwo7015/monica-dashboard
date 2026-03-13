@@ -237,15 +237,24 @@ def build_row(msg):
     return row
 
 def batch_upsert(rows):
-    """批量upsert到chat_messages，返回成功写入数"""
+    """批量upsert到chat_messages，返回成功写入数
+
+    语音消息(msg_type=3)特殊处理：不覆盖已有的content字段，
+    因为transcribe_voice.py可能已经写入了转写结果。
+    """
     if not rows:
         return 0
 
     sb = get_sb()
     written = 0
 
-    for i in range(0, len(rows), BATCH_SIZE):
-        batch = rows[i:i + BATCH_SIZE]
+    # 分离语音消息和非语音消息
+    voice_rows = [r for r in rows if r.get("msg_type") == 3]
+    other_rows = [r for r in rows if r.get("msg_type") != 3]
+
+    # 非语音消息：正常upsert
+    for i in range(0, len(other_rows), BATCH_SIZE):
+        batch = other_rows[i:i + BATCH_SIZE]
         try:
             sb.table("chat_messages").upsert(
                 batch, on_conflict="msg_svr_id"
@@ -254,7 +263,6 @@ def batch_upsert(rows):
         except Exception as e:
             err_msg = str(e)
             if "duplicate" in err_msg.lower() or "conflict" in err_msg.lower() or "dedup" in err_msg.lower():
-                # 批量冲突，逐条插入
                 for row in batch:
                     try:
                         sb.table("chat_messages").upsert(
@@ -262,9 +270,34 @@ def batch_upsert(rows):
                         ).execute()
                         written += 1
                     except Exception:
-                        pass  # 已存在，跳过
+                        pass
             else:
                 log.error(f"写入失败: {err_msg}")
+
+    # 语音消息：去掉content字段再upsert，避免覆盖转写结果
+    for i in range(0, len(voice_rows), BATCH_SIZE):
+        batch = []
+        for row in voice_rows[i:i + BATCH_SIZE]:
+            safe_row = {k: v for k, v in row.items() if k != "content"}
+            batch.append(safe_row)
+        try:
+            sb.table("chat_messages").upsert(
+                batch, on_conflict="msg_svr_id"
+            ).execute()
+            written += len(batch)
+        except Exception as e:
+            err_msg = str(e)
+            if "duplicate" in err_msg.lower() or "conflict" in err_msg.lower() or "dedup" in err_msg.lower():
+                for row in batch:
+                    try:
+                        sb.table("chat_messages").upsert(
+                            row, on_conflict="msg_svr_id"
+                        ).execute()
+                        written += 1
+                    except Exception:
+                        pass
+            else:
+                log.error(f"语音写入失败: {err_msg}")
 
     return written
 
