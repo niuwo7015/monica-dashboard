@@ -71,6 +71,18 @@ SALES_NAME_TO_ID = {
     'Chen': 'a8490e00-d1ca-41dc-afe8-39bbb31138ae',
 }
 
+# 客服名→sales_wechat_id映射（dashboard全链路用wxid关联）
+SALES_NAME_TO_WXID = {
+    '小杰': 'wxid_p03xoj66oss112',
+    'jay': 'wxid_p03xoj66oss112',
+    'Jay': 'wxid_p03xoj66oss112',
+    '可欣': 'wxid_am3kdib9tt3722',
+    '乐乐': 'wxid_am3kdib9tt3722',
+    '霄剑': 'wxid_cbk7hkyyp11t12',
+    '陈霄剑': 'wxid_cbk7hkyyp11t12',
+    'Chen': 'wxid_cbk7hkyyp11t12',
+}
+
 # ── 列映射（与3个飞书表格统一结构对应） ──────────────────
 COL_ORDER_DATE = 0       # A: 下单期
 COL_SALES_NAME = 1       # B: 客服
@@ -460,9 +472,10 @@ def parse_rows(rows, source_tag, wechat_lookup=None, contact_details=None):
         if product_name and product_name != product_type:
             product = f"{product_type}-{product_name}" if product_type else product_name
 
-        # 客服→sales_id
+        # 客服→sales_id + sales_wechat_id
         sales_name = cell(row, COL_SALES_NAME)
         sales_id = SALES_NAME_TO_ID.get(sales_name)
+        sales_wechat_id = SALES_NAME_TO_WXID.get(sales_name)
         if not sales_id and sales_name:
             logger.debug(f"第{row_idx}行未知客服: '{sales_name}'")
 
@@ -508,6 +521,7 @@ def parse_rows(rows, source_tag, wechat_lookup=None, contact_details=None):
             'amount': amount,
             'product': product or None,
             'sales_id': sales_id,
+            'sales_wechat_id': sales_wechat_id,
             'deposit': deposit or 0,
             'balance': balance or 0,
             'payment_status': payment_status,

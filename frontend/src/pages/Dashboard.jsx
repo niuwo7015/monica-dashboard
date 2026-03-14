@@ -615,7 +615,7 @@ export default function Dashboard() {
     Promise.all([
       fetchCoverageStats(dateRange, timePreset),
       fetchFunnel(dateRange, timePreset),
-      fetchPerformanceStats(dateRange, timePreset),
+      fetchPerformanceStats(dateRange, timePreset, funnelMode),
       fetchSalesFollowUp(dateRange, timePreset),
     ]).then(([covData, funnelData, perfData, followData]) => {
       setCoverage(covData)

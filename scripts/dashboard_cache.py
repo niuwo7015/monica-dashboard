@@ -126,10 +126,54 @@ def fetch_coverage(sb, start, end):
         return {'pct': 0, 'done': 0, 'total': 0, 'gap': 0}
 
 
+def _calc_performance(orders_list):
+    """从订单列表计算业绩指标（复用逻辑）"""
+    # 成交 = won + deposit(amount>1000)
+    filtered = [o for o in orders_list
+                if o.get('order_stage') == 'won'
+                or (o.get('order_stage') == 'deposit' and float(o.get('amount') or 0) > 1000)]
+    total_amount = sum(float(o.get('amount') or 0) for o in filtered)
+    total_orders = len(filtered)
+    avg_price = round(total_amount / total_orders) if total_orders > 0 else 0
+
+    with_cycle = [o for o in filtered if o.get('deal_cycle_days') is not None]
+    avg_cycle = round(sum(o['deal_cycle_days'] for o in with_cycle) / len(with_cycle)) if with_cycle else None
+
+    # Per-sales breakdown
+    sales_agg = {}
+    for o in filtered:
+        sid = o.get('sales_wechat_id') or 'unknown'
+        if sid not in sales_agg:
+            sales_agg[sid] = {'name': SALES_NAMES.get(sid, '未知'), 'amount': 0, 'count': 0, 'cycles': []}
+        sales_agg[sid]['amount'] += float(o.get('amount') or 0)
+        sales_agg[sid]['count'] += 1
+        if o.get('deal_cycle_days') is not None:
+            sales_agg[sid]['cycles'].append(o['deal_cycle_days'])
+
+    breakdown = []
+    for sid, v in sorted(sales_agg.items(), key=lambda x: x[1]['amount'], reverse=True):
+        if sid == 'unknown':
+            continue
+        breakdown.append({
+            'wechatId': sid,
+            'name': v['name'],
+            'amount': v['amount'],
+            'count': v['count'],
+            'avgCycle': round(sum(v['cycles']) / len(v['cycles'])) if v['cycles'] else None,
+        })
+
+    return {
+        'totalAmount': total_amount,
+        'totalOrders': total_orders,
+        'avgUnitPrice': avg_price,
+        'avgDealCycle': avg_cycle,
+        'salesBreakdown': breakdown,
+    }
+
+
 def fetch_performance(sb, start, end):
-    """业绩统计"""
+    """业绩统计 — 按成交（order_date在时间范围内）"""
     try:
-        # Fetch won orders with sales_wechat_id
         all_orders = []
         page_size = 1000
         offset = 0
@@ -148,50 +192,59 @@ def fetch_performance(sb, start, end):
                 break
             offset += page_size
 
-        # 成交 = won + deposit(amount>1000)
-        # deposit amount<=1000 是阶段1订金，不算成交
-        all_orders = [o for o in all_orders
-                      if o.get('order_stage') == 'won'
-                      or (o.get('order_stage') == 'deposit' and float(o.get('amount') or 0) > 1000)]
-        total_amount = sum(float(o.get('amount') or 0) for o in all_orders)
-        total_orders = len(all_orders)
-        avg_price = round(total_amount / total_orders) if total_orders > 0 else 0
-
-        with_cycle = [o for o in all_orders if o.get('deal_cycle_days') is not None]
-        avg_cycle = round(sum(o['deal_cycle_days'] for o in with_cycle) / len(with_cycle)) if with_cycle else None
-
-        # Per-sales breakdown
-        sales_agg = {}
-        for o in all_orders:
-            sid = o.get('sales_wechat_id') or 'unknown'
-            if sid not in sales_agg:
-                sales_agg[sid] = {'name': SALES_NAMES.get(sid, '未知'), 'amount': 0, 'count': 0, 'cycles': []}
-            sales_agg[sid]['amount'] += float(o.get('amount') or 0)
-            sales_agg[sid]['count'] += 1
-            if o.get('deal_cycle_days') is not None:
-                sales_agg[sid]['cycles'].append(o['deal_cycle_days'])
-
-        breakdown = []
-        for sid, v in sorted(sales_agg.items(), key=lambda x: x[1]['amount'], reverse=True):
-            if sid == 'unknown':
-                continue
-            breakdown.append({
-                'wechatId': sid,
-                'name': v['name'],
-                'amount': v['amount'],
-                'count': v['count'],
-                'avgCycle': round(sum(v['cycles']) / len(v['cycles'])) if v['cycles'] else None,
-            })
-
-        return {
-            'totalAmount': total_amount,
-            'totalOrders': total_orders,
-            'avgUnitPrice': avg_price,
-            'avgDealCycle': avg_cycle,
-            'salesBreakdown': breakdown,
-        }
+        return _calc_performance(all_orders)
     except Exception as e:
         logger.warning(f"performance failed: {e}")
+        return {'totalAmount': 0, 'totalOrders': 0, 'avgUnitPrice': 0, 'avgDealCycle': None, 'salesBreakdown': []}
+
+
+def fetch_performance_cohort(sb, start, end):
+    """业绩统计 — 按获客（add_time在时间范围内的客户的订单）"""
+    try:
+        # 1. 查时间范围内加微信的客户wechat_id
+        cohort_ids = []
+        page_size = 1000
+        offset = 0
+        while True:
+            q = sb.table('contacts').select('wechat_id').in_(
+                'sales_wechat_id', CORE_IDS
+            ).eq('is_deleted', 0).eq('friend_type', 1)
+            if start:
+                q = q.gte('add_time', start.isoformat())
+            if end:
+                q = q.lt('add_time', (end + timedelta(days=1)).isoformat())
+            r = q.range(offset, offset + page_size - 1).execute()
+            batch = r.data or []
+            cohort_ids.extend([c['wechat_id'] for c in batch])
+            if len(batch) < page_size:
+                break
+            offset += page_size
+
+        if not cohort_ids:
+            return {'totalAmount': 0, 'totalOrders': 0, 'avgUnitPrice': 0, 'avgDealCycle': None, 'salesBreakdown': []}
+
+        # 2. 查这些客户的所有成交订单（不限时间）
+        all_orders = []
+        # 分批查询避免IN列表过大
+        batch_size = 200
+        for i in range(0, len(cohort_ids), batch_size):
+            batch_ids = cohort_ids[i:i + batch_size]
+            offset = 0
+            while True:
+                r = sb.table('orders').select(
+                    'amount, wechat_id, order_date, deal_cycle_days, sales_wechat_id, order_stage'
+                ).in_('order_stage', ['won', 'deposit']).in_(
+                    'wechat_id', batch_ids
+                ).range(offset, offset + page_size - 1).execute()
+                batch = r.data or []
+                all_orders.extend(batch)
+                if len(batch) < page_size:
+                    break
+                offset += page_size
+
+        return _calc_performance(all_orders)
+    except Exception as e:
+        logger.warning(f"performance_cohort failed: {e}")
         return {'totalAmount': 0, 'totalOrders': 0, 'avgUnitPrice': 0, 'avgDealCycle': None, 'salesBreakdown': []}
 
 
@@ -286,6 +339,7 @@ def main():
                 'funnelCohort': fetch_funnel_cohort(sb, start, end),
                 'funnelPeriod': fetch_funnel_period(sb, start, end),
                 'performance': fetch_performance(sb, start, end),
+                'performanceCohort': fetch_performance_cohort(sb, start, end),
                 'followUp': fetch_follow_up(sb, start, end),
             }
         except Exception as e:

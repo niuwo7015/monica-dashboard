@@ -190,10 +190,15 @@ export async function fetchFunnelByTransaction(dateRange, preset) {
 // 3. Performance Stats
 // ═══════════════════════════════════════
 
-export async function fetchPerformanceStats(dateRange, preset) {
+export async function fetchPerformanceStats(dateRange, preset, funnelMode) {
   const cache = await getCache()
   const cached = getCachedPreset(cache, preset)
-  if (cached) return cached.performance
+  if (cached) {
+    if (funnelMode === 'acquisition' && cached.performanceCohort) {
+      return cached.performanceCohort
+    }
+    return cached.performance
+  }
 
   // Fallback: direct query
   const { start, end } = dateRange
