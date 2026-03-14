@@ -106,15 +106,17 @@ frontend/                # SalesToday前端
 
 ### 服务器环境变量（.env）— 本地运行脚本时需要设置
 
-| 变量 | 值 | 用途 |
-|---|---|---|
-| SUPABASE_URL | `https://dieeejjzbhkpgxdhwlxf.supabase.co` | Supabase地址 |
-| SUPABASE_SERVICE_ROLE_KEY | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpZWVlamp6YmhrcGd4ZGh3bHhmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjI5ODQyNywiZXhwIjoyMDg3ODc0NDI3fQ.sMo0KefhbdA1F-8bS0ESIB_0HXxJHdmH18xO0oCdUco` | Supabase全权限 |
-| ANTHROPIC_API_KEY | `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` | Claude Haiku 4.5直连 |
-| ANTHROPIC_PROXY | `http://127.0.0.1:7897` | Clash代理（中国IP被Anthropic封） |
-| DASHSCOPE_API_KEY | `sk-a5f9278bbbc34af7b5e608111cee1c68` | 阿里云百炼（语音转写paraformer-v2） |
-| FEISHU_APP_ID / APP_SECRET | 见服务器.env | 飞书应用凭证（只读权限） |
-| DEEPSEEK_API_KEY | 见服务器.env | DeepSeek V3.2官方API |
+所有密钥值见服务器 `/home/admin/monica-scripts/.env`，不要写入git仓库。
+
+| 变量 | 用途 |
+|---|---|
+| SUPABASE_URL | Supabase地址 |
+| SUPABASE_SERVICE_ROLE_KEY | Supabase全权限 |
+| ANTHROPIC_API_KEY | Claude Haiku 4.5直连 |
+| ANTHROPIC_PROXY | Clash代理（中国IP被Anthropic封，本地用`http://127.0.0.1:7897`） |
+| DASHSCOPE_API_KEY | 阿里云百炼（语音转写paraformer-v2） |
+| FEISHU_APP_ID / APP_SECRET | 飞书应用凭证（只读权限） |
+| DEEPSEEK_API_KEY | DeepSeek V3.2官方API |
 
 ## Cron定时任务
 
