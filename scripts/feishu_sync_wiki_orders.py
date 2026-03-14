@@ -357,6 +357,14 @@ def build_wechat_lookup(supabase):
             if val:
                 key_to_wxids.setdefault(val, set()).add(wxid)
 
+    # T-032: nickname（昵称）映射（用于兜底反查）
+    nickname_to_wxids = {}
+    for c in all_contacts:
+        wxid = c.get('wechat_id', '')
+        nickname = (c.get('nickname') or '').strip()  # nickname（微信昵称）
+        if wxid and nickname:
+            nickname_to_wxids.setdefault(nickname, set()).add(wxid)
+
     # 分离唯一匹配和歧义匹配
     exact_map = {}
     ambiguous = {}
@@ -366,34 +374,61 @@ def build_wechat_lookup(supabase):
         else:
             ambiguous[key] = list(wxids)
 
-    logger.info(f"  反查映射: {len(exact_map)}个唯一匹配, {len(ambiguous)}个歧义项")
-    logger.info(f"  详情映射: {len(contact_details)}个contacts")
-    return exact_map, ambiguous, contact_details
+    # T-032: nickname（昵称）唯一匹配也加入映射（不覆盖已有的alias/remark映射）
+    nickname_exact = {}  # nickname_exact（昵称唯一匹配表）
+    for nick, wxids in nickname_to_wxids.items():
+        if len(wxids) == 1 and nick not in exact_map:
+            nickname_exact[nick] = next(iter(wxids))
+
+    logger.info(f"  反查映射: {len(exact_map)}个唯一匹配(别名/备注), "
+                f"{len(nickname_exact)}个唯一匹配(昵称), {len(ambiguous)}个歧义项")
+    logger.info(f"  详情映射: {len(contact_details)}条联系人")
+    return exact_map, ambiguous, contact_details, nickname_exact
 
 
-def resolve_wechat_id(raw_value, exact_map, ambiguous):
-    """将飞书D列原始值解析为wxid
+def resolve_wechat_id(raw_value, exact_map, ambiguous, nickname_exact=None):
+    """将飞书D列（微信号）原始值解析为云客wechat_id
 
     逻辑：
-    1. 如果已经是wxid_开头，直接返回
-    2. 精确匹配exact_map（alias或remark）
-    3. 如果精确匹配不到，尝试模糊匹配（remark包含该值）
-    4. 匹配到唯一结果返回wxid，多个结果或无结果返回None
+    1. 过滤垃圾值（"无"、日期格式等）
+    2. 已经是wxid_开头 → 直接返回
+    3. 包含"/wxid_" → 提取wxid部分
+    4. 精确匹配exact_map（别名alias或备注remark）
+    5. nickname（昵称）唯一匹配（T-032兜底）
+    6. 模糊匹配（备注remark包含该值）
+    7. 匹配到唯一结果返回wxid，多个或无结果返回None
 
-    返回: (resolved_wxid, match_type) 或 (None, reason)
+    返回: (匹配到的wxid, 匹配方式) 或 (None, 失败原因)
     """
     if not raw_value:
         return None, 'empty'
 
-    # 已经是wxid格式
+    # T-032: 过滤垃圾值（"无"、日期格式等）
+    if raw_value in ('无',):
+        return None, 'junk'
+    # 日期格式（如"11月15日"、"2025/09/5"）
+    if re.match(r'^\d{1,2}月\d{1,2}日$', raw_value) or re.match(r'^\d{4}/\d{1,2}/\d{1,2}$', raw_value):
+        return None, 'junk_date'
+
+    # 已经是wxid格式（云客内部ID）
     if raw_value.startswith('wxid_'):
         return raw_value, 'wxid'
 
-    # 精确匹配alias或remark
+    # T-032: 包含"/wxid_"的特殊格式（如"昵称/wxid_xxx"），提取wxid部分
+    wxid_match = re.search(r'(wxid_[a-zA-Z0-9_]+)', raw_value)
+    if wxid_match:
+        return wxid_match.group(1), 'wxid_extracted'
+
+    # 精确匹配别名（alias）或备注（remark）
     if raw_value in exact_map:
         return exact_map[raw_value], 'exact'
 
-    # 模糊匹配：遍历exact_map找remark包含该值的
+    # T-032: 昵称（nickname）唯一匹配（兜底）
+    nickname_exact = nickname_exact or {}
+    if raw_value in nickname_exact:
+        return nickname_exact[raw_value], 'nickname'
+
+    # 模糊匹配：遍历别名/备注表找包含该值的
     fuzzy_matches = set()
     for key, wxid in exact_map.items():
         if raw_value in key:
@@ -404,7 +439,7 @@ def resolve_wechat_id(raw_value, exact_map, ambiguous):
     if len(fuzzy_matches) > 1:
         return None, f'fuzzy_ambiguous({len(fuzzy_matches)})'
 
-    # 检查歧义映射
+    # 检查歧义映射（多个联系人同名）
     if raw_value in ambiguous:
         return None, f'ambiguous({len(ambiguous[raw_value])})'
 
@@ -414,11 +449,11 @@ def resolve_wechat_id(raw_value, exact_map, ambiguous):
 def parse_rows(rows, source_tag, wechat_lookup=None, contact_details=None):
     """将表格行解析为订单记录
 
-    Args:
+    参数:
         rows: 表格数据（含表头）
-        source_tag: 来源标识，用于生成唯一的feishu_record_id
-        wechat_lookup: (exact_map, ambiguous) 反查映射，None则不做反查
-        contact_details: {wechat_id: {alias, nickname, add_time}} 联系人详情
+        source_tag: 来源标识（来源标记），用于生成唯一的feishu_record_id（飞书记录ID）
+        wechat_lookup: (exact_map（精确映射）, ambiguous（歧义映射）, nickname_exact（昵称映射）)
+        contact_details: {wechat_id（微信ID）: {alias（别名）, nickname（昵称）, add_time（添加时间）}}
     """
     if not rows or len(rows) < 2:
         logger.warning("表格数据不足（无数据行）")
@@ -427,12 +462,12 @@ def parse_rows(rows, source_tag, wechat_lookup=None, contact_details=None):
     header = rows[0]
     logger.info(f"表头: {[str(h)[:15] for h in header[:26] if h]}")
 
-    exact_map, ambiguous = wechat_lookup or ({}, {})
+    exact_map, ambiguous, nickname_exact = wechat_lookup or ({}, {}, {})
     contact_details = contact_details or {}
 
     orders = []
     skipped = 0
-    resolve_stats = {'wxid': 0, 'exact': 0, 'fuzzy': 0, 'failed': 0}
+    resolve_stats = {'wxid': 0, 'exact': 0, 'nickname': 0, 'fuzzy': 0, 'failed': 0}
 
     for row_idx, row in enumerate(rows[1:], start=2):
         # 微信号必填
@@ -442,16 +477,22 @@ def parse_rows(rows, source_tag, wechat_lookup=None, contact_details=None):
             continue
 
         # T-026b: 反查逻辑 — 如果D列不是wxid格式，通过contacts表反查
-        wechat_id, match_type = resolve_wechat_id(raw_wechat, exact_map, ambiguous)
+        wechat_id, match_type = resolve_wechat_id(raw_wechat, exact_map, ambiguous, nickname_exact)
         if wechat_id:
             if match_type != 'wxid':
                 logger.info(f"  第{row_idx}行 反查成功: '{raw_wechat}' → {wechat_id} ({match_type})")
             resolve_stats[match_type if match_type in resolve_stats else 'exact'] += 1
         else:
-            # 反查失败，仍使用原始值（保持向后兼容）
-            wechat_id = raw_wechat
-            resolve_stats['failed'] += 1
-            logger.warning(f"  第{row_idx}行 反查失败: '{raw_wechat}' ({match_type})")
+            if match_type in ('junk', 'junk_date'):
+                # T-032: 垃圾值不写入wechat_id，置NULL
+                wechat_id = None
+                resolve_stats['failed'] += 1
+                logger.warning(f"  第{row_idx}行 垃圾值跳过: '{raw_wechat}' ({match_type})")
+            else:
+                # 反查失败，仍使用原始值（保持向后兼容）
+                wechat_id = raw_wechat
+                resolve_stats['failed'] += 1
+                logger.warning(f"  第{row_idx}行 反查失败: '{raw_wechat}' ({match_type})")
 
         # 解析日期（优先用A列下单期，备用T列下单时间）
         order_date = parse_date(cell(row, COL_ORDER_DATE))
@@ -699,8 +740,8 @@ def main():
     # 1b. T-026b: 构建contacts反查映射（用于将飞书alias→wxid）
     # T-026c: 同时返回contact_details用于填充 wechat_alias, nickname, add_time
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-    exact_map, ambiguous, contact_details = build_wechat_lookup(supabase)
-    wechat_lookup = (exact_map, ambiguous)
+    exact_map, ambiguous, contact_details, nickname_exact = build_wechat_lookup(supabase)
+    wechat_lookup = (exact_map, ambiguous, nickname_exact)
 
     all_orders = []
 
