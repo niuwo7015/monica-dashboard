@@ -28,29 +28,8 @@ export const SALES_LIST = [
 // 3 main sales for filter dropdown
 export const MAIN_SALES = SALES_LIST.slice(0, 3)
 
-export const TASK_TYPE_INFO = {
-  urgent_reply: { label: '紧急回复', action: '立即回复客户消息', color: T.red },
-  follow_up_silent: { label: '沉默跟进', action: '主动跟进沉默客户', color: T.orange },
-  reactivate: { label: '沉默激活', action: '重新激活长期未互动客户', color: T.gold },
-  initial_contact: { label: '首次联系', action: '发起首次破冰对话', color: T.green },
-}
-
-export const PRIORITY_GROUPS = [
-  { min: 10, key: 'urgent', label: '紧急', color: T.red, emoji: '🔥', desc: '客户在等你回复' },
-  { min: 5, key: 'high', label: '重要', color: T.orange, emoji: '⚡', desc: '客户沉默需跟进' },
-  { min: 3, key: 'medium', label: '一般', color: T.gold, emoji: '💡', desc: '长时间未互动' },
-  { min: 0, key: 'low', label: '了解', color: T.green, emoji: '🌱', desc: '尚无聊天记录' },
-]
-
-export function getPriorityGroup(priority) {
-  return PRIORITY_GROUPS.find(g => priority >= g.min) || PRIORITY_GROUPS[PRIORITY_GROUPS.length - 1]
-}
-
-export function parseSilentDays(triggerRule) {
-  if (!triggerRule) return null
-  const m = triggerRule.match(/(\d+)天/)
-  return m ? parseInt(m[1], 10) : null
-}
+/* Phase 1 旧分类（TASK_TYPE_INFO/PRIORITY_GROUPS）已废弃，
+   SalesToday现在直接用diagnoses表的5-action数据 */
 
 export const INJECTED_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900&display=swap');

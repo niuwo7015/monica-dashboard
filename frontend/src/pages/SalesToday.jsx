@@ -1,129 +1,165 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { T, TASK_TYPE_INFO, PRIORITY_GROUPS, getPriorityGroup, parseSilentDays } from '../lib/theme'
+import { T } from '../lib/theme'
 
-/* ═══ Helpers ═══ */
-const fmtDate = d => {
-  if (!d) return '—'
-  const dt = new Date(d)
-  return `${dt.getMonth() + 1}/${dt.getDate()}`
-}
+/* ═══ 5-Action 定义 ═══ */
+const ACTION_GROUPS = [
+  { key: 'rush',    label: '立刻跟', emoji: '🔴', color: '#c06068', desc: '客户有明确推进信号' },
+  { key: 'follow',  label: '持续跟', emoji: '🟠', color: '#e8a44c', desc: '有兴趣但时机不急' },
+  { key: 'revive',  label: '值得捞', emoji: '🟡', color: '#d4c45c', desc: '沉默了但值得激活' },
+  { key: 'nurture', label: '低优养着', emoji: '⚪', color: '#a09098', desc: '浅度接触，低频维护' },
+  { key: 'drop',    label: '别浪费', emoji: '⛔', color: '#585058', desc: '明确拒绝或不匹配' },
+]
 
-const motivation = pct => {
-  if (pct === 0) return '今天的任务已准备好，开始跟进吧 ☕'
-  if (pct < 50) return '正在推进中，节奏很好'
-  if (pct < 100) return '过半了，今天状态不错'
-  return '今天全部搞定，辛苦了'
-}
-
-/* ═══ Task Card ═══ */
-function TaskCard({ task, contact, onDone, onUndo }) {
-  const isDone = task.status === 'done'
-  const typeInfo = TASK_TYPE_INFO[task.task_type] || { label: task.task_type, color: T.textSub }
-  const silentDays = parseSilentDays(task.trigger_rule)
-  const contactName = contact?.remark || contact?.nickname || task.contact_wechat_id
+/* ═══ 诊断卡片 ═══ */
+function DiagCard({ diag, contact }) {
+  const [expanded, setExpanded] = useState(false)
+  const contactName = contact?.remark || contact?.nickname || diag.contact_wechat_id
+  const group = ACTION_GROUPS.find(g => g.key === diag.action) || ACTION_GROUPS[3]
 
   return (
     <div style={{
       background: T.bgCard, borderRadius: T.radius,
-      border: `1px solid ${isDone ? T.borderSub : T.border}`,
+      border: `1px solid ${T.border}`,
       marginBottom: 10, padding: 16,
-      opacity: isDone ? 0.45 : 1,
-      transition: 'opacity 0.3s',
     }}>
-      {/* Row 1: Name + chips */}
+      {/* 行1: 客户名 + action标签 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
         <span style={{ fontSize: 16, fontWeight: 800, color: T.text, fontFamily: T.fontSans }}>
           {contactName}
         </span>
         <span style={{
-          fontSize: 11, fontWeight: 600, color: typeInfo.color,
-          border: `1px solid ${typeInfo.color}66`, borderRadius: 4,
+          fontSize: 11, fontWeight: 600, color: group.color,
+          border: `1px solid ${group.color}66`, borderRadius: 4,
           padding: '2px 6px', fontFamily: T.fontSans,
         }}>
-          {typeInfo.label}
+          {group.emoji} {group.label}
         </span>
-        {silentDays != null && (
+        {diag.msg_count > 0 && (
           <span style={{
-            fontSize: 11, fontWeight: 600, color: T.textSub,
+            fontSize: 11, color: T.textDim,
             border: `1px solid ${T.border}`, borderRadius: 4,
-            padding: '2px 6px', fontFamily: T.fontSans,
+            padding: '2px 6px',
           }}>
-            {silentDays}天未联系
+            {diag.msg_count}条消息
+          </span>
+        )}
+        {diag.order_stage && (
+          <span style={{
+            fontSize: 11, color: T.green,
+            border: `1px solid ${T.green}66`, borderRadius: 4,
+            padding: '2px 6px',
+          }}>
+            {diag.order_stage === 'won' ? '已成交' : diag.order_stage === 'deposit' ? '已付定金' : diag.order_stage}
           </span>
         )}
       </div>
 
-      {/* Row 2: Trigger rule */}
-      {task.trigger_rule && (
+      {/* 行2: 判断依据 */}
+      {diag.reason && (
         <div style={{ fontSize: 13, color: T.textBody, lineHeight: 1.6, marginBottom: 8 }}>
-          {task.trigger_rule}
+          {diag.reason}
         </div>
       )}
 
-      {/* Row 3: Suggested action */}
-      <div style={{
-        fontSize: 13.5, color: T.gold, lineHeight: 1.6, marginBottom: 10,
-        display: 'flex', alignItems: 'flex-start', gap: 6,
-      }}>
-        <span style={{ fontWeight: 700 }}>→</span>
-        <span>{typeInfo.action || '跟进客户'}</span>
-      </div>
-
-      {/* Row 4: Contact tag */}
-      {contact?.contact_tag && contact.contact_tag !== '未分类' && (
+      {/* 行3: 建议动作 */}
+      {diag.do_this && (
         <div style={{
-          fontSize: 11, color: T.textDim, marginBottom: 10,
+          fontSize: 13.5, color: T.gold, lineHeight: 1.6, marginBottom: 8,
+          display: 'flex', alignItems: 'flex-start', gap: 6,
+        }}>
+          <span style={{ fontWeight: 700 }}>→</span>
+          <span>{diag.do_this}</span>
+        </div>
+      )}
+
+      {/* 行4: 风险信号 */}
+      {diag.risk && (
+        <div style={{
+          fontSize: 12, color: T.red, marginBottom: 8,
           display: 'flex', alignItems: 'center', gap: 4,
         }}>
-          标签: {contact.contact_tag}
+          ⚠ {diag.risk}
         </div>
       )}
 
-      {/* Divider + action */}
+      {/* 展开详情 */}
       <div style={{ borderTop: `1px solid ${T.borderSub}`, margin: '8px 0' }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: 12, color: T.textDim }}>
-          {fmtDate(task.task_date)}
+          {diag.model || 'haiku-4.5'}
         </span>
-        {isDone ? (
-          <button
-            onClick={() => onUndo(task.id)}
-            style={{
-              background: 'transparent', border: `1px solid ${T.border}`, borderRadius: T.radiusSm,
-              color: T.green, padding: '8px 16px', fontSize: 12, fontWeight: 700,
-              fontFamily: T.fontSans, cursor: 'pointer',
-            }}
-          >
-            ✓ 已完成 · 撤回
-          </button>
-        ) : (
-          <button
-            onClick={() => onDone(task.id)}
-            style={{
-              background: T.gradientBtn, border: 'none', borderRadius: T.radiusPill,
-              color: '#fff', padding: '8px 18px', fontSize: 13, fontWeight: 700,
-              fontFamily: T.fontSans, cursor: 'pointer',
-            }}
-          >
-            已完成
-          </button>
-        )}
+        <button
+          onClick={() => setExpanded(!expanded)}
+          style={{
+            background: 'transparent', border: `1px solid ${T.border}`, borderRadius: T.radiusSm,
+            color: T.textSub, padding: '6px 12px', fontSize: 12,
+            fontFamily: T.fontSans, cursor: 'pointer',
+          }}
+        >
+          {expanded ? '收起' : '详情'}
+        </button>
       </div>
+
+      {/* 展开后的详细信息 */}
+      {expanded && diag.raw_response && (() => {
+        try {
+          const raw = JSON.parse(diag.raw_response)
+          return (
+            <div style={{ marginTop: 12, fontSize: 12, color: T.textSub, lineHeight: 1.8 }}>
+              {raw.facts && !raw.facts._parse_error && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ color: T.gold, fontWeight: 700, marginBottom: 4 }}>事实提取</div>
+                  {raw.facts.core_needs && <div>需求：{raw.facts.core_needs}</div>}
+                  {raw.facts.price_discussion && <div>价格：{raw.facts.price_discussion}</div>}
+                  {raw.facts.renovation_stage && <div>装修：{raw.facts.renovation_stage}</div>}
+                  {raw.facts.emotion_trend && <div>情绪：{raw.facts.emotion_trend}</div>}
+                </div>
+              )}
+              {raw.diag && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ color: T.gold, fontWeight: 700, marginBottom: 4 }}>诊断+自我批判</div>
+                  <div>判定：{raw.diag.action} — {raw.diag.reason}</div>
+                  {raw.diag.self_critique && Array.isArray(raw.diag.self_critique) && raw.diag.self_critique.map((c, i) => (
+                    <div key={i} style={{ color: T.textDim }}>· {c}</div>
+                  ))}
+                </div>
+              )}
+              {raw.xval && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ color: T.gold, fontWeight: 700, marginBottom: 4 }}>
+                    交叉验证 {raw.xval.validated ? '✅' : '❌修正→' + raw.xval.action}
+                  </div>
+                  {raw.xval.validation_note && <div>{raw.xval.validation_note}</div>}
+                </div>
+              )}
+              {raw.monica && (
+                <div>
+                  <div style={{ color: '#CE93D8', fontWeight: 700, marginBottom: 4 }}>
+                    Monica审核 {raw.monica.agree ? '✅' : '❌修正→' + raw.monica.action}
+                  </div>
+                  {raw.monica.monica_note && <div style={{ color: '#CE93D8' }}>{raw.monica.monica_note}</div>}
+                </div>
+              )}
+            </div>
+          )
+        } catch { return null }
+      })()}
     </div>
   )
 }
 
 /* ═══════════════════════════════════════
-   Main SalesToday — Phase 1
-   数据源: daily_tasks + contacts
+   SalesToday — Phase 2
+   数据源: diagnoses（AI诊断5-action）
    ═══════════════════════════════════════ */
 export default function SalesToday() {
   const { userProfile } = useAuth()
-  const [tasks, setTasks] = useState([])
+  const [diags, setDiags] = useState([])
   const [contacts, setContacts] = useState({})
   const [loading, setLoading] = useState(true)
+  const [activeFilter, setActiveFilter] = useState('all')
 
   useEffect(() => { fetchData() }, [userProfile])
 
@@ -131,20 +167,29 @@ export default function SalesToday() {
     if (!userProfile) return
     setLoading(true)
     try {
-      const today = new Date().toISOString().split('T')[0]
+      // 取最新一天的诊断（不一定是今天）
+      const { data: latestDate } = await supabase
+        .from('diagnoses')
+        .select('diagnosis_date')
+        .eq('sales_wechat_id', userProfile.salesWechatId)
+        .order('diagnosis_date', { ascending: false })
+        .limit(1)
 
-      const { data: taskData } = await supabase
-        .from('daily_tasks')
+      const diagDate = latestDate?.[0]?.diagnosis_date
+      if (!diagDate) { setLoading(false); return }
+
+      const { data: diagData } = await supabase
+        .from('diagnoses')
         .select('*')
         .eq('sales_wechat_id', userProfile.salesWechatId)
-        .eq('task_date', today)
-        .order('priority', { ascending: false })
+        .eq('diagnosis_date', diagDate)
+        .order('action')
 
-      const allTasks = taskData || []
-      setTasks(allTasks)
+      const allDiags = diagData || []
+      setDiags(allDiags)
 
-      // Fetch contact info for all unique contact_wechat_ids
-      const contactIds = [...new Set(allTasks.map(t => t.contact_wechat_id).filter(Boolean))]
+      // 获取联系人信息
+      const contactIds = [...new Set(allDiags.map(d => d.contact_wechat_id).filter(Boolean))]
       if (contactIds.length > 0) {
         const { data: contactData } = await supabase
           .from('contacts')
@@ -162,50 +207,45 @@ export default function SalesToday() {
     setLoading(false)
   }
 
-  const handleDone = async (taskId) => {
-    try {
-      await supabase.from('daily_tasks').update({
-        status: 'done',
-        executed_at: new Date().toISOString(),
-      }).eq('id', taskId)
-
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'done' } : t))
-    } catch (err) {
-      console.error('Update failed:', err)
-    }
-  }
-
-  const handleUndo = async (taskId) => {
-    try {
-      await supabase.from('daily_tasks').update({
-        status: 'pending',
-        executed_at: null,
-      }).eq('id', taskId)
-
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'pending' } : t))
-    } catch (err) {
-      console.error('Undo failed:', err)
-    }
-  }
-
-  /* Group by priority */
+  /* 按action分组 */
   const grouped = useMemo(() => {
     const groups = {}
-    PRIORITY_GROUPS.forEach(g => { groups[g.key] = [] })
+    ACTION_GROUPS.forEach(g => { groups[g.key] = [] })
 
-    tasks.forEach(task => {
-      const pg = getPriorityGroup(task.priority)
-      if (groups[pg.key]) groups[pg.key].push(task)
+    diags.forEach(d => {
+      if (groups[d.action]) groups[d.action].push(d)
+    })
+
+    // 排序：rush优先，rush内按消息数降序
+    Object.values(groups).forEach(arr => {
+      arr.sort((a, b) => (b.msg_count || 0) - (a.msg_count || 0))
     })
 
     return groups
-  }, [tasks])
+  }, [diags])
 
-  /* Stats */
-  const pendingTasks = tasks.filter(t => t.status === 'pending')
-  const doneTasks = tasks.filter(t => t.status === 'done')
-  const urgentCount = tasks.filter(t => t.priority >= 10 && t.status === 'pending').length
-  const pct = tasks.length > 0 ? Math.round((doneTasks.length / tasks.length) * 100) : 0
+  /* 过滤 */
+  const filteredGroups = useMemo(() => {
+    if (activeFilter === 'all') return grouped
+    const result = {}
+    ACTION_GROUPS.forEach(g => {
+      result[g.key] = g.key === activeFilter ? grouped[g.key] : []
+    })
+    return result
+  }, [grouped, activeFilter])
+
+  /* 统计 */
+  const actionCounts = useMemo(() => {
+    const c = {}
+    ACTION_GROUPS.forEach(g => { c[g.key] = (grouped[g.key] || []).length })
+    return c
+  }, [grouped])
+
+  const diagDate = diags[0]?.diagnosis_date
+  const fmtDiagDate = diagDate ? (() => {
+    const d = new Date(diagDate + 'T00:00:00')
+    return `${d.getMonth() + 1}月${d.getDate()}日`
+  })() : ''
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 80 }}>
@@ -215,105 +255,91 @@ export default function SalesToday() {
 
   return (
     <div style={{ padding: '16px 16px 0' }}>
-      {/* Stats card */}
+      {/* 统计卡片 */}
       <div style={{
         background: T.bgCard, borderRadius: T.radius,
         border: `1px solid ${T.border}`, padding: 20, marginBottom: 16,
       }}>
         <div style={{
-          display: 'flex', justifyContent: 'space-around',
-          textAlign: 'center', marginBottom: 16,
+          fontSize: 13, color: T.textDim, textAlign: 'center', marginBottom: 12,
         }}>
-          <div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: T.text }}>{pendingTasks.length}</div>
-            <div style={{ fontSize: 12, color: T.textDim }}>待跟进</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: T.green }}>{doneTasks.length}</div>
-            <div style={{ fontSize: 12, color: T.textDim }}>已完成</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: T.red }}>{urgentCount}</div>
-            <div style={{ fontSize: 12, color: T.textDim }}>紧急</div>
-          </div>
-        </div>
-
-        {/* Progress bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <div style={{ background: T.bg, borderRadius: 6, height: 6, flex: 1, overflow: 'hidden' }}>
-            <div style={{
-              width: `${pct}%`, height: '100%', borderRadius: 6,
-              background: T.gradientBtn, transition: 'width 0.5s ease',
-            }} />
-          </div>
-          <span style={{
-            fontSize: 14, fontWeight: 700, color: T.gold,
-            fontFamily: T.fontSerif, minWidth: 40, textAlign: 'right',
-          }}>
-            {pct}%
-          </span>
+          {fmtDiagDate} AI诊断 · {diags.length}位客户
         </div>
         <div style={{
-          textAlign: 'center', fontSize: 12, color: T.textDim,
-          fontStyle: 'italic',
+          display: 'flex', justifyContent: 'space-around',
+          textAlign: 'center', marginBottom: 8,
         }}>
-          {motivation(pct)}
+          {ACTION_GROUPS.map(g => (
+            <div key={g.key}
+              onClick={() => setActiveFilter(activeFilter === g.key ? 'all' : g.key)}
+              style={{ cursor: 'pointer', opacity: activeFilter !== 'all' && activeFilter !== g.key ? 0.3 : 1 }}
+            >
+              <div style={{ fontSize: 24, fontWeight: 800, color: g.color }}>
+                {actionCounts[g.key]}
+              </div>
+              <div style={{ fontSize: 11, color: T.textDim }}>{g.emoji} {g.label}</div>
+            </div>
+          ))}
         </div>
+        {activeFilter !== 'all' && (
+          <div style={{ textAlign: 'center', marginTop: 8 }}>
+            <button
+              onClick={() => setActiveFilter('all')}
+              style={{
+                background: 'transparent', border: `1px solid ${T.border}`,
+                borderRadius: T.radiusPill, color: T.textSub, padding: '4px 16px',
+                fontSize: 12, cursor: 'pointer',
+              }}
+            >
+              显示全部
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Task groups */}
-      {PRIORITY_GROUPS.map(pg => {
-        const items = grouped[pg.key] || []
+      {/* 按action分组展示 */}
+      {ACTION_GROUPS.map(ag => {
+        const items = filteredGroups[ag.key] || []
         if (items.length === 0) return null
-        const pending = items.filter(t => t.status === 'pending')
-        const done = items.filter(t => t.status === 'done')
 
         return (
-          <div key={pg.key} style={{ marginBottom: 24 }}>
-            {/* Group header */}
+          <div key={ag.key} style={{ marginBottom: 24 }}>
+            {/* 分组标题 */}
             <div style={{
               display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', marginBottom: 10,
             }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ fontSize: 18 }}>{pg.emoji}</span>
+                <span style={{ fontSize: 18 }}>{ag.emoji}</span>
                 <span style={{
                   fontSize: 15, fontWeight: 800, color: T.text,
                   fontFamily: T.fontSerif,
-                }}>{pg.label}</span>
-                <span style={{ fontSize: 12, color: T.textDim }}>{pg.desc}</span>
+                }}>{ag.label}</span>
+                <span style={{ fontSize: 12, color: T.textDim }}>{ag.desc}</span>
               </div>
               <span style={{
                 fontSize: 12, fontWeight: 700,
-                background: `${pg.color}22`, color: pg.color,
+                background: `${ag.color}22`, color: ag.color,
                 padding: '2px 10px', borderRadius: T.radiusPill,
-              }}>{pending.length}</span>
+              }}>{items.length}</span>
             </div>
 
-            {pending.map(task => (
-              <TaskCard
-                key={task.id} task={task}
-                contact={contacts[task.contact_wechat_id]}
-                onDone={handleDone} onUndo={handleUndo}
-              />
-            ))}
-            {done.map(task => (
-              <TaskCard
-                key={task.id} task={task}
-                contact={contacts[task.contact_wechat_id]}
-                onDone={handleDone} onUndo={handleUndo}
+            {items.map(d => (
+              <DiagCard
+                key={d.id} diag={d}
+                contact={contacts[d.contact_wechat_id]}
               />
             ))}
           </div>
         )
       })}
 
-      {/* Empty state */}
-      {tasks.length === 0 && (
+      {/* 空状态 */}
+      {diags.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: T.textDim }}>
-          <div style={{ fontSize: 40, marginBottom: 16 }}>☕</div>
-          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>今天没有待办任务</div>
-          <div style={{ fontSize: 13 }}>规则引擎还没生成今日任务</div>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>🤖</div>
+          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>暂无AI诊断数据</div>
+          <div style={{ fontSize: 13 }}>等待诊断任务运行后自动更新</div>
         </div>
       )}
     </div>
