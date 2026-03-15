@@ -14,7 +14,6 @@ const ACTION_GROUPS = [
 
 /* ═══ 诊断卡片 ═══ */
 function DiagCard({ diag, contact }) {
-  const [expanded, setExpanded] = useState(false)
   const contactName = contact?.remark || contact?.nickname || diag.contact_wechat_id
   const group = ACTION_GROUPS.find(g => g.key === diag.action) || ACTION_GROUPS[3]
 
@@ -84,68 +83,10 @@ function DiagCard({ diag, contact }) {
         </div>
       )}
 
-      {/* 展开详情 */}
-      <div style={{ borderTop: `1px solid ${T.borderSub}`, margin: '8px 0' }} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 12, color: T.textDim }}>
-          {diag.model || 'haiku-4.5'}
-        </span>
-        <button
-          onClick={() => setExpanded(!expanded)}
-          style={{
-            background: 'transparent', border: `1px solid ${T.border}`, borderRadius: T.radiusSm,
-            color: T.textSub, padding: '6px 12px', fontSize: 12,
-            fontFamily: T.fontSans, cursor: 'pointer',
-          }}
-        >
-          {expanded ? '收起' : '详情'}
-        </button>
-      </div>
-
-      {/* 展开后的详细信息 */}
-      {expanded && diag.raw_response && (() => {
-        try {
-          const raw = JSON.parse(diag.raw_response)
-          return (
-            <div style={{ marginTop: 12, fontSize: 12, color: T.textSub, lineHeight: 1.8 }}>
-              {raw.facts && !raw.facts._parse_error && (
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ color: T.gold, fontWeight: 700, marginBottom: 4 }}>事实提取</div>
-                  {raw.facts.core_needs && <div>需求：{raw.facts.core_needs}</div>}
-                  {raw.facts.price_discussion && <div>价格：{raw.facts.price_discussion}</div>}
-                  {raw.facts.renovation_stage && <div>装修：{raw.facts.renovation_stage}</div>}
-                  {raw.facts.emotion_trend && <div>情绪：{raw.facts.emotion_trend}</div>}
-                </div>
-              )}
-              {raw.diag && (
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ color: T.gold, fontWeight: 700, marginBottom: 4 }}>诊断+自我批判</div>
-                  <div>判定：{raw.diag.action} — {raw.diag.reason}</div>
-                  {raw.diag.self_critique && Array.isArray(raw.diag.self_critique) && raw.diag.self_critique.map((c, i) => (
-                    <div key={i} style={{ color: T.textDim }}>· {c}</div>
-                  ))}
-                </div>
-              )}
-              {raw.xval && (
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ color: T.gold, fontWeight: 700, marginBottom: 4 }}>
-                    交叉验证 {raw.xval.validated ? '✅' : '❌修正→' + raw.xval.action}
-                  </div>
-                  {raw.xval.validation_note && <div>{raw.xval.validation_note}</div>}
-                </div>
-              )}
-              {raw.monica && (
-                <div>
-                  <div style={{ color: '#CE93D8', fontWeight: 700, marginBottom: 4 }}>
-                    Monica审核 {raw.monica.agree ? '✅' : '❌修正→' + raw.monica.action}
-                  </div>
-                  {raw.monica.monica_note && <div style={{ color: '#CE93D8' }}>{raw.monica.monica_note}</div>}
-                </div>
-              )}
-            </div>
-          )
-        } catch { return null }
-      })()}
+      {/* 底部分隔线 */}
+      {(diag.order_stage || diag.msg_count > 0) && (
+        <div style={{ borderTop: `1px solid ${T.borderSub}`, margin: '8px 0' }} />
+      )}
     </div>
   )
 }
